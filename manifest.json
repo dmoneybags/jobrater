@@ -1,0 +1,26 @@
+{
+    "name": "Job Rater Alpha",
+    "version": "0.1.0",
+    "description": "Get the real information on job postings BEFORE you apply.",
+    "permissions": [
+    "storage",
+    "tabs",
+    "activeTab",
+    "scripting"
+    ],
+    "host_permissions": ["https://*.linkedin.com/*"],
+    "background": {
+        "service_worker": "src/background/background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": ["https://*.linkedin.com/*"],
+            "js": ["src/content/contentScript.js"]
+        }
+    ],
+    "action": {
+        "default_title": "Job Rater",
+        "default_popup": "public/popup.html"
+    },
+    "manifest_version": 3
+}

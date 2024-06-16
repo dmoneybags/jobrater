@@ -1,0 +1,302 @@
+e.default =
+    ((j = (0, l.inject)('router')),
+    (P = (0, l.inject)('asset-loader')),
+    (k = (0, l.inject)('global-services@store-shim')),
+    (O = (0, l.inject)('tracking')),
+    (x = (0, l.inject)('@linkedin/ember-restli-graphql@graphql')),
+    (M = (0, l.inject)('client-sensor-web@client-sensor')),
+    (N = (0, l.inject)('jet')),
+    (T = class e extends l.default {
+      constructor() {
+        super(...arguments)
+        ;(0, t.default)(this, 'router', E, this)
+        ;(0, t.default)(this, 'assetLoader', A, this)
+        ;(0, t.default)(this, 'storeShim', z, this)
+        ;(0, t.default)(this, 'tracking', R, this)
+        ;(0, t.default)(this, 'graphql', U, this)
+        ;(0, t.default)(this, 'clientSensor', S, this)
+        ;(0, t.default)(this, 'jet', I, this)
+        ;(0, i.default)(this, 'prefetchedBundles', {})
+        ;(0, i.default)(this, 'historyLength', 2)
+        ;(0, i.default)(this, 'currentPageId', (0, p.default)())
+        ;(0, i.default)(this, 'previousPageId', null)
+        ;(0, i.default)(this, 'isPrefetchingAssetsEnabled', false)
+        ;(0, i.default)(this, 'isTransitioning', false)
+        ;(0, i.default)(this, '_loadBundleRunTaskTimer', [])
+        this.history = new d.default(this.currentPageId, this.historyLength)
+        this.router.on(
+          'routeWillChange',
+          this._handleRouteWillChange.bind(this)
+        )
+        this.router.on('routeDidChange', this._handleRouteDidChange.bind(this))
+      }
+      prefetchData(e) {
+        let t =
+          arguments.length > 1 && void 0 !== arguments[1]
+            ? arguments[1]
+            : 'unknown'
+        ;(0, m.whenRouteIdle)().then(() => {
+          if ((0, o.isDestroying)(this)) {
+            return
+          }
+          L.includes(t) &&
+            this.clientSensor.incrementMetricCounter({
+              groupName: f.CLIENT_SENSOR_GROUP_NAME.CAREERS,
+              metricName:
+                f.CLIENT_SENSOR_PREFETCH_METRIC
+                  .JOBS_HOME_FEED_PREFETCH_REQUESTED,
+            })
+          let i = e.map((e) => {
+            const { routeName: i, request: r, isGraphQL: a } = e,
+              n = this.router.currentRouteName
+            if (n && n.indexOf(i) > -1) {
+              return null
+            }
+            let l, u
+            if (a) {
+              const { query: e, variables: t, options: a } = r[0]
+              u = a
+              l = this.graphql.executeQuery(e, t, u).catch((e) => {
+                if ((0, o.isDestroying)(this)) {
+                  throw e
+                }
+                const t = e && (0, s.get)(e, 'errors.0.extensions.status'),
+                  r = t && parseInt(t, 10)
+                if (
+                  'GraphQLQueryError' === (null == e ? void 0 : e.name) &&
+                  'search.results' === i
+                ) {
+                  const t = [w.JET_TAGS.CLUSTER_PREFETCH_RESULTS, `query: ${r}`]
+                  t.push(`GraphQL errors: ${JSON.stringify(e.errors)}`)
+                  ;(0, _.errorLogger)(
+                    this.jet,
+                    `Error prefetching data ${t[0]}`,
+                    e,
+                    t,
+                    { shouldRethrow: false }
+                  )
+                  return {}
+                }
+                throw e
+              })
+            } else {
+              const e = r[0]
+              u = { ...r[1] }
+              u[D] = true
+              l = this.storeShim.queryURL(e, u).catch((e) => {
+                if ((0, o.isDestroying)(this)) {
+                  throw e
+                }
+                const t = e && (0, s.get)(e, 'errors.0.status'),
+                  r = t && parseInt(t, 10)
+                if ('search.results' === i) {
+                  var a, n, l
+                  const t = [w.JET_TAGS.CLUSTER_PREFETCH_RESULTS, `query: ${r}`]
+                  t.push(`Dash API request errors: ${JSON.stringify(e.errors)}`)
+                  ;(0, _.errorLogger)(
+                    this.jet,
+                    `Error prefetching data ${t[0]}`,
+                    e,
+                    t,
+                    {
+                      callTreeId:
+                        null == e ||
+                        null === (a = e.errors) ||
+                        void 0 === a ||
+                        null === (n = a[0]) ||
+                        void 0 === n ||
+                        null === (l = n.meta) ||
+                        void 0 === l
+                          ? void 0
+                          : l.callTreeId,
+                      shouldRethrow: false,
+                    }
+                  )
+                  return {}
+                }
+                throw e
+              })
+            }
+            const { cacheKey: d, discardTimeout: c } = u
+            l.then((e) => {
+              ;(0, o.isDestroying)(this) ||
+                this._handlePrefetchComplete(e, d, c)
+            })
+            this._onM3RequestPrefetchStart(d, t)
+            return l
+          })
+          i = i.filter((e) => null !== e)
+          return (0, h.all)(i)
+        })
+      }
+      prefetchAssets(e) {
+        let t =
+            arguments.length > 1 && void 0 !== arguments[1]
+              ? arguments[1]
+              : 'dummy_pageKey',
+          i =
+            arguments.length > 2 && void 0 !== arguments[2]
+              ? arguments[2]
+              : 'unknown'
+        return (0, y.hasBundle)(e) && !this.prefetchedBundles[e]
+          ? (0, m.whenRouteIdle)().then(() => {
+              if (!(0, o.isDestroying)(this)) {
+                return this._loadBundleHelper(e, t, i)
+              }
+            })
+          : (0, h.resolve)()
+      }
+      prefetchAssetsWithRouteName(t) {
+        const i = e.getMappedParametersFromRouteName(t)
+        if ((0, g.isPresent)(i)) {
+          const { bundleMetadata: e } = i,
+            r = t.split('.index')[0]
+          Object.entries(e).forEach((e) => {
+            let [t, i] = e
+            ;(0, y.hasBundle)(t) &&
+              !this.prefetchedBundles[t] &&
+              (0, m.whenRouteIdle)().then(() => {
+                if ((0, o.isDestroying)(this)) {
+                  return
+                }
+                const e = `INFRA-${r}-${t}`,
+                  a = (0, v.runTask)(
+                    this,
+                    () => {
+                      this._loadBundleHelper(t, i, e)
+                    },
+                    2000
+                  )
+                this._loadBundleRunTaskTimer.push(a)
+              })
+          })
+        }
+      }
+      onQueryURL(e) {
+        let t =
+          arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : {}
+        const { cacheKey: i } = t
+        if (t[D]) {
+          return
+        }
+        const r = this.history.findM3RequestPrefetchEventByCacheKey(i),
+          a = this.isTransitioning ? this.currentPageId : this.previousPageId
+        null !== r &&
+          r.completed &&
+          r.sourcePageId === a &&
+          C('consume', c.PREFETCH_EVENT_TYPE.M3_REQUEST, r.scenario)
+      }
+      enablePrefetchingAssets() {
+        this.isPrefetchingAssetsEnabled = true
+      }
+      _loadBundleHelper(e, t, i) {
+        return this.assetLoader
+          .loadBundle(e)
+          .then(() => {
+            if (!(0, o.isDestroying)(this)) {
+              this._onAssetsPrefetchStart(e, t, i)
+              this.prefetchedBundles[e] = true
+            }
+          })
+          .catch((e) => {
+            if ((0, o.isDestroying)(this)) {
+              throw e
+            }
+            if ('BundleLoadError' !== e.name) {
+              throw e
+            }
+          })
+      }
+      _handleRouteWillChange() {
+        this._loadBundleRunTaskTimer.forEach((e) => {
+          ;(0, v.cancelTask)(this, e)
+        })
+        this._loadBundleRunTaskTimer = []
+        this.isTransitioning = true
+      }
+      _handleRouteDidChange(e) {
+        var t
+        const i =
+          null == e || null === (t = e.to) || void 0 === t ? void 0 : t.name
+        this.isTransitioning = false
+        this._updatePageId()
+        this.history.onTransition(this.currentPageId)
+        const { tracking: r, history: a } = this,
+          o = r.getCurrentPageKey(),
+          n = a.findAssetsPrefetchEventByTargetPage(o)
+        null !== n &&
+          n.sourcePageId === this.previousPageId &&
+          C('consume', c.PREFETCH_EVENT_TYPE.ASSETS, n.scenario)
+        i &&
+          this.isPrefetchingAssetsEnabled &&
+          this.prefetchAssetsWithRouteName(i)
+      }
+      _onAssetsPrefetchStart(e, t, i) {
+        this.history.onAssetsPrefetchStart(e, t, i)
+        C('start', c.PREFETCH_EVENT_TYPE.ASSETS, i)
+      }
+      _onM3RequestPrefetchStart(e, t) {
+        this.history.onM3RequestPrefetchStart(e, t)
+        C('start', c.PREFETCH_EVENT_TYPE.M3_REQUEST, t)
+      }
+      _onM3RequestPrefetchComplete(e) {
+        this.history.onM3RequestPrefetchComplete(e)
+      }
+      _handlePrefetchComplete(e, t, i) {
+        this._onM3RequestPrefetchComplete(t)
+        void 0 === i ||
+          n.default.testing ||
+          (0, b.later)(() => e.unloadRecord(), i)
+      }
+      _updatePageId() {
+        this.previousPageId = this.currentPageId
+        this.currentPageId = (0, p.default)()
+      }
+      static getMappedParametersFromRouteName(e) {
+        return c.ROUTE_TO_ASSET_PARAM_MAP[e]
+      }
+    }),
+    (E = (0, r.default)(T.prototype, 'router', [j], {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      initializer: null,
+    })),
+    (A = (0, r.default)(T.prototype, 'assetLoader', [P], {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      initializer: null,
+    })),
+    (z = (0, r.default)(T.prototype, 'storeShim', [k], {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      initializer: null,
+    })),
+    (R = (0, r.default)(T.prototype, 'tracking', [O], {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      initializer: null,
+    })),
+    (U = (0, r.default)(T.prototype, 'graphql', [x], {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      initializer: null,
+    })),
+    (S = (0, r.default)(T.prototype, 'clientSensor', [M], {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      initializer: null,
+    })),
+    (I = (0, r.default)(T.prototype, 'jet', [N], {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      initializer: null,
+    })),
+    T)
+}
