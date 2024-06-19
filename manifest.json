@@ -6,9 +6,15 @@
     "storage",
     "tabs",
     "activeTab",
-    "scripting"
+    "scripting",
+    "webRequest",
+    "webRequestBlocking",
+    "<all_urls>"
     ],
-    "host_permissions": ["https://*.linkedin.com/*"],
+    "host_permissions" : [
+    "http://*/*",
+    "https://*/*"
+    ],
     "background": {
         "service_worker": "src/background/background.js"
     },

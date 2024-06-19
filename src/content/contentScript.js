@@ -1,28 +1,40 @@
+//Runs all the content after we get new jobloaded message, basically grabbing all our data and putting it in our db
+//ISSUES:
+//topbox has trouble being grabbed when the page first loads in
+//hours doesn't register properly as a timeframe
 (() => {
+    //No job is loaded yet
     let currentJob = "";
+    //Listener that activates every time a new linkedin job is selected
     chrome.runtime.onMessage.addListener((obj, sender, response) => {
         console.log("Message recieved");
+        //Only arg to the message is the job id
         const { type, value, jobId } = obj;
-
         if (type === "NEW") {
             currentJob = jobId;
             console.log(jobId);
-            newJobLoaded();
+            newJobLoaded(jobId);
         }
     });
 
-        // Common stopwords to exclude
+    // Common stopwords to exclude
     const stopwords = [
         "a", "an", "and", "are", "as", "at", "be", "but", "by", "for", "if", "in", 
         "into", "is", "it", "of", "on", "or", "that", "the", "to", "with", "will",
         "firm", "about", "our", "their", "team", "role", "process", "through",
         "day", "regional", "well", "can", "please", "including", "individual", "work",
         "benefits", "we", "job", "company", "select", "review", "stakeholders", "plan",
-        "services", "products", "qualifications", "what", "you", "other"
+        "services", "products", "qualifications", "what", "you", "other", "your", "because",
+        "need", "don", "t", "have", "s", "who", "looking", "great", "also", "want", "good", "all",
+        "from", "all", "over", "candidates", "feel", "they", "meet", "apply", "note", "criteria", "note",
+        "re", "like", "this", "us", "ll", "ve"
     ];
 
     // Function to extract keywords
-    function extractKeywords(text) {
+    const extractKeywords = () => {
+        const jobDescriptionBox = document.getElementById("job-details");
+
+        const text = jobDescriptionBox.textContent.trim();
         // Convert the text to lower case and split it into words
         const words = text.toLowerCase().match(/\b\w+\b/g);
 
@@ -40,68 +52,105 @@
 
         return sortedKeywords;
     };
-    const getTopBoxInfoData = (topBox) => {
-        topBoxText = topBox.textContent.trim();
-        topBoxContents = topBoxText.split("·");
-        console.log(topBoxContents);
-        topBoxData = {
-            "location": "",
-            "secondsPostedAgo": 0,
-            "applicants": 0
-        };
-        topBoxData["location"] = topBoxContents[0];
-        console.log("Location: " + topBoxContents[0])
-        timeComponents = topBoxContents[1].split(" ").filter(element => element !== "");
-        console.log(timeComponents);
-        numberOfTimeframe = timeComponents[0];
-        timeFrame = timeComponents[1];
-        console.log("Timeframe: " + timeFrame)
+    const getTimeFrameSeconds = (timeFrame) => {
+        let seconds = 0;
         switch (timeFrame) {
             case 'months':
-                topBoxData["secondsPostedAgo"] = 7 * 24 * 3600;
+                seconds = 7 * 24 * 3600;
                 break;
             case 'month':
-                topBoxData["secondsPostedAgo"] = 7 * 24 * 3600;
+                seconds = 7 * 24 * 3600;
                 break;
             case 'weeks':
-                topBoxData["secondsPostedAgo"] = 7 * 24 * 3600;
+                seconds = 7 * 24 * 3600;
                 break;
             case 'week':
-                topBoxData["secondsPostedAgo"] = 7 * 24 * 3600;
+                seconds = 7 * 24 * 3600;
                 break;
             case 'days':
-                topBoxData["secondsPostedAgo"] = 24 * 3600;
+                seconds = 24 * 3600;
                 break;
             case 'day':
-                topBoxData["secondsPostedAgo"] = 24 * 3600;
+                seconds = 24 * 3600;
                 break;
             case 'hours':
-                topBoxData["secondsPostedAgo"] = 3600;
+                seconds = 3600;
                 break;
             case 'hour':
-                topBoxData["secondsPostedAgo"] = 3600;
+                seconds = 3600;
                 break;
             case 'minutes':
-                topBoxData["secondsPostedAgo"] = 60;
+                seconds = 60;
                 break;
             case 'minute':
-                topBoxData["secondsPostedAgo"] = 60;
+                seconds = 60;
                 break;
             default:
                 console.error('Unsupported timeframe');
                 break;
         }
-        applicantStr = topBoxContents[2];
-        const numbers = applicantStr.split(" ").filter(str => !isNaN(str));
+        return seconds;
+    }
+    //Top box is the box below the job name that shows the location, time posted and applicants
+    const getTopBoxData = () => {
+        let topBox = document.getElementsByClassName("job-details-jobs-unified-top-card__primary-description-container")[0];
+        if (!topBox) {
+            console.warning("top_box_text not found");
+        }
+        //get the string data
+        let topBoxText = topBox.textContent.trim();
+        //remove empty strings
+        topBoxText = topBoxText.replace(/[\r\n]+/g, '');
+        //split by the dots
+        if (topBoxText.includes("·")){
+            var topBoxContents = topBoxText.split("·");
+        } else {
+            topBoxContents = topBoxText.split("\n");
+        }
+        const topBoxData = {
+            "location": "",
+            "secondsPostedAgo": 0,
+            "applicants": 0
+        };
+        //will always show location first
+        topBoxData["location"] = topBoxContents[0];
+        //time posted ago second
+        let timeStr = topBoxContents[1]
+        //If the job was reposted remove the prefix
+        const prefix = "Reposted ";
+        if (timeStr.includes(prefix)){
+            timeStr = timeStr.substring(prefix.length);
+        }
+        //When we split into words we get weird empty strings
+        let timeComponents = timeStr.split(" ").filter(element => element !== "");
+        //How many of a certain timeframe do we have
+        const numberOfTimeframe = timeComponents[0];
+        //hours, days, weeks, months
+        const timeFrame = timeComponents[1];
+        console.log("Timeframe: " + timeFrame)
+        topBoxData["secondsPostedAgo"] = numberOfTimeframe * getTimeFrameSeconds(timeFrame);
+        //Applicants 3rd
+        const applicantStr = topBoxContents[2];
+        //again splitting gets us weird empty strings
+        let numbers = applicantStr.split(" ").filter(element => element !== "");
+        //Lets find the numbers in the components
+        numbers = numbers.filter(str => !isNaN(str));
         topBoxData["applicants"] = numbers[0];
-        console.log("Applicants: " + numbers[0]);
         return topBoxData;
     }
-    const getJobInfoData = (descriptionBox) => {
-        descriptionBoxText = descriptionBox.textContent.trim();
-        descriptionBoxContents = descriptionBoxText.split("\n");
+    const getJobInfoData = () => {
+        //holds salary, on site hybrid remote, 
+        let infoBox = document.getElementsByClassName("job-details-jobs-unified-top-card__job-insight")[0];
+        if (!infoBox) {
+            infoBox = document.getElementsByClassName("mt2 mb2")[0];
+            if (!infoBox) {
+                console.warn("info_box_text not found");
+            }
+        }
+        const infoBoxText = infoBox.textContent.trim();
+        const infoBoxContents = infoBoxText.split("\n");
         
-        descriptionData = {
+        const json = {
             "paymentFreq": "",
             "paymentBase": "",
             "paymentHigh": "",
@@ -109,91 +158,152 @@
             "careerStage": ""
         };
 
-        modes = ["Remote", "Hybrid", "On-site"],
-        careerStages = ["Associate", "Entry level", "Mid-Senior level", "Executive", "Director", ]
-        for (let element of descriptionBoxContents){
-            str = String(element);
+        const modes = ["Remote", "Hybrid", "On-site"];
+        const careerStages = ["Associate", "Entry level", "Mid-Senior level", "Executive", "Director", ]
+        for (let element of infoBoxContents){
+            //cut out any conversion errors
+            let str = String(element);
+            //check each mode to see if defining text existings
             for (let mode of modes){
+                //Check if the string includes the text of our modes
                 if (str.includes(mode)){
-                    descriptionData["mode"] = mode;
-                    console.log("found mode of " + mode); 
+                    //mode is the string of hybrid onsite or remote
+                    json["mode"] = mode;
                     continue;
                 }
             };
+            //Same for careerStages
             for (let careerStage of careerStages){
                 if (str.includes(careerStage)){
-                    descriptionData["careerStage"] = careerStage;
-                    console.log("found careerStage of " + mode); 
+                    json["careerStage"] = careerStage;
+                    console.log("found careerStage of " + careerStage); 
                     continue;
                 }
             };
+            //Check for our salary element
             if (str.includes("$")){
                 if (str.includes("yr")){
-                    descriptionData["paymentFreq"]  = "yr";
+                    json["paymentFreq"]  = "yr";
                 }
                 if (str.includes("hr")){
-                    descriptionData["paymentFreq"]  = "hr";
+                    json["paymentFreq"]  = "hr";
                 }
+                //Find our 2 numbers in the string by matching a regular expression
                 const regex = /[\d,]+\.?\d*/g;
                 const matches = str.match(regex);
                 
                 if (matches) {
                     // Convert matched strings to numbers and return as an array
                      amounts = matches.map(match => parseFloat(match.replace(/,/g, '')));
-                     descriptionData["paymentBase"] = amounts[0];
+                     json["paymentBase"] = amounts[0];
                      if (amounts.length < 2){
                         continue;
                      }
-                     descriptionData["paymentHigh"] = amounts[1];
+                     json["paymentHigh"] = amounts[1];
                 }
             }
         };
-        return descriptionData;
+        return json;
     };
 
-    const newJobLoaded = () => {
-        console.log("New Job Loaded");
+    const getCompanyAndJob = () => {
         //use document methods here to grab the info we need
-        companyNameBox = document.getElementsByClassName("job-details-jobs-unified-top-card__company-name")[0];
-    
+        //companyNameBox holds the company name, located at the very top of the posting
+        const companyNameBox = document.getElementsByClassName("job-details-jobs-unified-top-card__company-name")[0];
+        let company = "";
+        let job = "";
+        //Check if it exists
         if (companyNameBox) {
-            let company = companyNameBox.textContent.trim();
+            company = companyNameBox.textContent.trim();
             console.log("Company: " + company);
         } else {
-            console.log("Company name box not found");
+            //couldn't find company box
+            console.warning("Company name box not found");
         }
-
-        jobNameBox = document.getElementsByClassName("job-details-jobs-unified-top-card__job-title")[0];
-
+        //holds the job posting below the company name
+        const jobNameBox = document.getElementsByClassName("job-details-jobs-unified-top-card__job-title")[0];
+        //Check if it exists
         if (jobNameBox) {
-            let job = jobNameBox.textContent.trim();
+            job = jobNameBox.textContent.trim();
             console.log("Job: " + job);
         } else {
-            console.log("Job name box not found");
+            //Couldnt find the job name
+            console.warning("Job name box not found");
         }
+        return [company, job];
+    }
 
-        //holds salary, on site hybrid remote, 
-        infoBox = document.getElementsByClassName("job-details-jobs-unified-top-card__job-insight")[0];
-        topBox = document.getElementsByClassName("job-details-jobs-unified-top-card__primary-description-container")[0];
-        if (!infoBox) {
-            console.log("description_box_text not found");
-        }
-        if (!topBox) {
-            console.log("top_box_text not found");
-        }
-        topBoxData = getTopBoxInfoData(topBox);
-        descriptionData = getJobInfoData(infoBox);
-        console.log(descriptionData);
-        console.log(topBoxData);
-        jobDescriptionBox = document.getElementById("job-details");
-
-        jobDescriptionText = jobDescriptionBox.textContent.trim();
-
+    const scrapeJobInfo = () => {
+        //jobData is the main dict, we start with it and compile the other subDicts into it
+        let jobData = {
+            "company": "",
+            "job": "",
+            "keywords": ""
+        };
+        let [company, job] = getCompanyAndJob();
         // Extract keywords from the job description
-        const keywords = extractKeywords(jobDescriptionText);
-
-        // Print the keywords
-        console.log(keywords);
+        const keywords = extractKeywords();
+        //Load the info it
+        jobData["company"] = company;
+        jobData["job"] = job;
+        jobData["keywords"] = keywords;
+        //Top box shows location, days posted ago, and applicants
+        const topBoxData = getTopBoxData();
+        const descriptionData = getJobInfoData();
+        return { ...jobData, ...topBoxData, ...descriptionData };
+    }
+    //Calls our python program to scrape info from glassdoor
+    const scrapeGlassdoorInfo = (company) => {
+        //create a promise to resolve it asynchronously
+        return new Promise((resolve, reject) => {
+            //Our python program runs on port 5000 on our local server
+            var xhr = new XMLHttpRequest();
+            //call an http request
+            xhr.open('GET', 'http://localhost:5000/get_glassdoor_data?company=' + encodeURIComponent(company), true);
+            xhr.onload = function () {
+                //It suceeded
+                if (xhr.status === 200) {
+                    //change it to json
+                    var response = JSON.parse(xhr.responseText);
+                    console.log(response)
+                    //resolve the promist
+                    resolve(response);
+                } else {
+                    //Didnt get a sucessful message
+                    console.error('Request failed. Status:', xhr.status);
+                    reject(xhr.status);
+                }
+            };
+            //Couldnt load the http request
+            xhr.onerror = function () {
+                console.error('Request failed. Network error');
+                reject(xhr.statusText);
+            };
+            //send our response
+            xhr.send();
+        });
+    };
+    //Called every single time a new job is loaded. Grabs information on the job and sets it in the DB. 
+    //View will then render the db.
+    const newJobLoaded = (jobId) => {
+        console.log("New Job Loaded");
+        //Grabs the data directly from the linkedin website
+        var jobDataJson = scrapeJobInfo();
+        //Store the job ID as a UUID for our db
+        jobDataJson["jobId"] = jobId;
+        //Grabs the info from our python program which scrapes the glassdoor website.
+        scrapeGlassdoorInfo(jobDataJson["company"])
+        //promise the return
+            .then(processedValue => {
+                //merge our dictionaries
+                jobDataJson = { ...jobDataJson, ...processedValue };
+                console.log(jobDataJson);
+            })
+            .catch(error => {
+                //Log that the glassdoor data couldn't be grabbed
+                console.error('Error:', error);
+            });
+        //commit to our database
     }
     newJobLoaded();
 })();
