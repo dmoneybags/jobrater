@@ -10,11 +10,14 @@ Glassdoor will block our requests sometimes and throw a captcha or however you s
 import os
 from enum import Enum
 import asyncio
+import brotli
 import json
 import os
 import re
 import httpx
+from random import choice
 from bs4 import BeautifulSoup
+from html import escape
 from typing import Dict, List, Optional, Tuple, TypedDict
 from urllib.parse import urljoin
 from flask import Flask, jsonify, request
@@ -104,11 +107,19 @@ class FoundCompany(TypedDict):
     url_salaries: str
 async def find_companies(query: str, session: httpx.AsyncClient) -> List[FoundCompany]:
     """find company Glassdoor ID and name by query. e.g. "ebay" will return "eBay" with ID 7853"""
+    print("URL: " + f"https://www.glassdoor.com/searchsuggest/typeahead?numSuggestions=8&source=GD_V2&version=NEW&rf=full&fallback=token&input={query}")
+    # Set a realistic timeout
+    timeout = httpx.Timeout(10.0, connect=5.0)
     result = session.get(
-        f"https://www.glassdoor.com/searchsuggest/typeahead?numSuggestions=8&source=GD_V2&version=NEW&rf=full&fallback=token&input={query}"
+        f"https://www.glassdoor.com/searchsuggest/typeahead?numSuggestions=8&source=GD_V2&version=NEW&rf=full&fallback=token&input={query}",
+        timeout=timeout
     )
-    print(result.content)
-    data = json.loads(result.content)
+    try:
+        data = result.json()
+    except:
+        print("DATA CONVERSION FAILED FOR: " + result.text)
+        print(f"HEADERS: {result.headers}")
+        print(brotli.decompress(result.content))
     companies = []
     for result in data:
         if result["category"] == "company":
@@ -193,16 +204,78 @@ async def run():
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
         return response
     company = request.args.get('company', default="NO COMPANY LOADED", type=str)
+    #remove non utf8 characters
+    company = company.encode('utf-8', errors='ignore').decode('utf-8')
     if company == "NO COMPANY LOADED":
         raise AttributeError("Could not load company")
-    headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.5",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Referer": "https://www.google.com/",
-    }
-    client = httpx.Client(headers=headers)
+    print("Company Loaded: " + company)
+    headers_list = [
+        {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/91.0.4472.124 Safari/537.36"
+            ),
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+            "Referer": "https://www.google.com/",
+            "DNT": "1"
+        },
+        {
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/605.1.15 (KHTML, like Gecko) "
+                "Version/14.1.2 Safari/605.1.15"
+            ),
+            "Accept-Language": "en-US,en;q=0.8",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+            "Referer": "https://www.apple.com/",
+            "DNT": "1"
+        },
+        {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) "
+                "Gecko/20100101 Firefox/89.0"
+            ),
+            "Accept-Language": "en-US,en;q=0.7",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+            "Referer": "https://www.mozilla.org/",
+            "DNT": "1"
+        },
+        {
+            "User-Agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/90.0.4430.93 Safari/537.36"
+            ),
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+            "Referer": "https://www.google.com/",
+            "DNT": "1"
+        },
+        {
+            "User-Agent": (
+                "Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) "
+                "AppleWebKit/605.1.15 (KHTML, like Gecko) "
+                "Version/14.0 Mobile/15E148 Safari/604.1"
+            ),
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+            "Referer": "https://www.apple.com/",
+            "DNT": "1"
+        }
+    ]
+    client = httpx.Client(headers=choice(headers_list), follow_redirects=True)
     companies = await find_companies(company, client)
     company_data_url = companies[0]["url_reviews"]
     print("Company Data Url: "+company_data_url)

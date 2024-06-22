@@ -1,7 +1,6 @@
 //Runs all the content after we get new jobloaded message, basically grabbing all our data and putting it in our db
 //ISSUES:
 //topbox has trouble being grabbed when the page first loads in
-//hours doesn't register properly as a timeframe
 (() => {
     //No job is loaded yet
     let currentJob = "";
@@ -29,7 +28,6 @@
         "from", "all", "over", "candidates", "feel", "they", "meet", "apply", "note", "criteria", "note",
         "re", "like", "this", "us", "ll", "ve"
     ];
-
     // Function to extract keywords
     const extractKeywords = () => {
         const jobDescriptionBox = document.getElementById("job-details");
@@ -98,7 +96,8 @@
             console.warning("top_box_text not found");
         }
         //get the string data
-        let topBoxText = topBox.textContent.trim();
+        let topBoxText = topBox.innerText;
+        console.log("Top Box Text: " + topBoxText)
         //remove empty strings
         topBoxText = topBoxText.replace(/[\r\n]+/g, '');
         //split by the dots
@@ -116,6 +115,7 @@
         topBoxData["location"] = topBoxContents[0];
         //time posted ago second
         let timeStr = topBoxContents[1]
+        console.log("TimeStr: " + timeStr);
         //If the job was reposted remove the prefix
         const prefix = "Reposted ";
         if (timeStr.includes(prefix)){
@@ -218,7 +218,7 @@
             console.log("Company: " + company);
         } else {
             //couldn't find company box
-            console.warning("Company name box not found");
+            console.error("Company name box not found");
         }
         //holds the job posting below the company name
         const jobNameBox = document.getElementsByClassName("job-details-jobs-unified-top-card__job-title")[0];
@@ -283,27 +283,46 @@
             xhr.send();
         });
     };
+    waitForDocumentLoaded = () => {
+        return new Promise((resolve) => {
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                resolve();
+            } else {
+                document.addEventListener('DOMContentLoaded', resolve);
+            }
+        });
+    }
+    sendMessageToAddJob = (jobDataJson) => {
+        chrome.runtime.sendMessage({ 
+            greeting: "ADD_JOB", 
+            jobDataJson: jobDataJson 
+        }, function(response) {
+            console.log('Response from background script:', response.farewell);
+        });
+    }
     //Called every single time a new job is loaded. Grabs information on the job and sets it in the DB. 
     //View will then render the db.
     const newJobLoaded = (jobId) => {
-        console.log("New Job Loaded");
-        //Grabs the data directly from the linkedin website
-        var jobDataJson = scrapeJobInfo();
-        //Store the job ID as a UUID for our db
-        jobDataJson["jobId"] = jobId;
-        //Grabs the info from our python program which scrapes the glassdoor website.
-        scrapeGlassdoorInfo(jobDataJson["company"])
-        //promise the return
-            .then(processedValue => {
-                //merge our dictionaries
-                jobDataJson = { ...jobDataJson, ...processedValue };
-                console.log(jobDataJson);
-            })
-            .catch(error => {
-                //Log that the glassdoor data couldn't be grabbed
-                console.error('Error:', error);
-            });
-        //commit to our database
+        waitForDocumentLoaded().then(() => {
+            console.log("New Job Loaded");
+            //Grabs the data directly from the linkedin website
+            var jobDataJson = scrapeJobInfo();
+            //Store the job ID as a UUID for our db
+            jobDataJson["jobId"] = jobId;
+            //Grabs the info from our python program which scrapes the glassdoor website.
+            scrapeGlassdoorInfo(jobDataJson["company"])
+            //promise the return
+                .then(processedValue => {
+                    //merge our dictionaries
+                    jobDataJson = { ...jobDataJson, ...processedValue };
+                    console.log(jobDataJson);
+                    sendMessageToAddJob(jobDataJson);
+                })
+                .catch(error => {
+                    //Log that the glassdoor data couldn't be grabbed
+                    console.error('Error:', error);
+                });
+        });
     }
     newJobLoaded();
 })();

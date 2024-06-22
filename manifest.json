@@ -8,20 +8,21 @@
     "activeTab",
     "scripting",
     "webRequest",
-    "webRequestBlocking",
-    "<all_urls>"
+    "webRequestBlocking"
     ],
     "host_permissions" : [
     "http://*/*",
     "https://*/*"
     ],
     "background": {
-        "service_worker": "src/background/background.js"
+        "service_worker": "src/background/background.js",
+        "type": "module"
     },
     "content_scripts": [
         {
             "matches": ["https://*.linkedin.com/*"],
-            "js": ["src/content/contentScript.js"]
+            "js": ["src/content/contentScript.js"],
+            "type": "module"
         }
     ],
     "action": {
