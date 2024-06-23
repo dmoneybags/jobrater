@@ -1,6 +1,17 @@
 //Runs all the content after we get new jobloaded message, basically grabbing all our data and putting it in our db
 //ISSUES:
 //topbox has trouble being grabbed when the page first loads in
+//TO DO:
+//CRUD Methods
+//Add competitiveness algo taking, applicants, company and job prestige, required experience
+//Get company address
+//Google maps api
+//Salary benchmarking
+//UI
+//User data
+//Payments
+//deployment
+TEST = true;
 (() => {
     //No job is loaded yet
     let currentJob = "";

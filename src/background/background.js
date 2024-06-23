@@ -40,11 +40,32 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     }
 });
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+    //CREATE
     if (request.greeting === "ADD_JOB") {
-        console.log('Received job data:', request.jobDataJson);
+        console.log("Received job data:", request.jobDataJson);
         JobDatabases.addNewJob(request.jobDataJson);
         sendResponse({ farewell: "Job added successfully" });
     }
+    //READ
+    if (request.greeting === "GET_MOST_RECENT_JOB") {
+        console.log("Recieved get most recent job message")
+        JobDatabases.readMostRecentJob()
+        .then((jobJson) => {
+            sendResponse({response: jobJson, farewell: "Job read successfully" });
+        });
+    }
+    //UPDATE
+    if (request.greeting === "UPDATE_JOB") {
+        console.log("Recieved update job notification for " + mostRecentJob["job"] + " at " + mostRecentJob["company"]);
+        JobDatabases.updateJobById(request.jobDataJson);
+        sendResponse({ farewell: "Job update successfully" });
+    }
+    //DELETE
+    if (request.greeting === "DELETE_JOB") {
+        console.log("Recieved update job notification for " + mostRecentJob["job"] + " at " + mostRecentJob["company"]);
+        JobDatabases.deleteJobById(request.jobId);
+        sendResponse({ farewell: "Job delete successfully" });
+    }   
 });
 
 // current schema:
@@ -91,14 +112,14 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 // 2.8
 // workLifeBalanceRating
 // 2.6
-const ORGINAL_DB_NAME = "RECENT_JOBS_DB";
+const DB_NAME = "RECENT_JOBS_DB";
 
 class JobDatabases {
     //Check if a job exists
     static exists(){
         //Asynchronously check
         return new Promise((resolve, reject) => {
-            let request = indexedDB.open(ORGINAL_DB_NAME, 1);
+            let request = indexedDB.open(DB_NAME, 1);
             //random error
             request.onerror = function(event) {
                 console.error("Error opening database:", event.target.errorCode);
@@ -135,9 +156,10 @@ class JobDatabases {
         return decompressStringGzip(compressedStr);
     }
     static handleCreateDb(event) {
+        console.log("HANDLING CREATE JOB DB EVENT");
         let db = event.target.result;
-        if (!db.objectStoreNames.contains(ORGINAL_DB_NAME)) {
-            let objectStore = db.createObjectStore(ORGINAL_DB_NAME, { keyPath: "jobId" });
+        if (!db.objectStoreNames.contains(DB_NAME)) {
+            let objectStore = db.createObjectStore(DB_NAME, { keyPath: "jobId" });
             objectStore.createIndex("applicants", "applicants", { unique: false });
             objectStore.createIndex("businessOutlookRating", "businessOutlookRating", { unique: false });
             objectStore.createIndex("careerOpportunitiesRating", "careerOpportunitiesRating", { unique: false });
@@ -170,7 +192,7 @@ class JobDatabases {
     }
     static openDatabase() {
         return new Promise((resolve, reject) => {
-            let request = indexedDB.open(ORGINAL_DB_NAME);
+            let request = indexedDB.open(DB_NAME);
 
             request.onsuccess = function(event) {
                 let db = event.target.result;
@@ -190,8 +212,8 @@ class JobDatabases {
         .then((db) => {
             // Add a timestamp
             jobJson["timeAdded"] = new Date().toISOString();
-            const transaction = db.transaction([ORGINAL_DB_NAME], "readwrite");
-            const objectStore = transaction.objectStore(ORGINAL_DB_NAME);
+            const transaction = db.transaction([DB_NAME], "readwrite");
+            const objectStore = transaction.objectStore(DB_NAME);
     
             // Make a request to add the object
             let request = objectStore.add(jobJson);
@@ -214,6 +236,128 @@ class JobDatabases {
         })
         .catch((err) => {
             console.log("Received an error trying to add job: " + err);
+        });
+    }
+    static readMostRecentJob() {
+        return new Promise((resolve, reject) => {
+            JobDatabases.openDatabase()
+            .then((db) => {
+                const transaction = db.transaction([DB_NAME], "readonly");
+                const objectStore = transaction.objectStore(DB_NAME);
+    
+                // Create a cursor request to get all items in descending order of timeAdded
+                const index = objectStore.index("timeAdded");
+                const request = index.openCursor(null, "prev"); // "prev" for descending order
+    
+                let mostRecentJob = null;
+    
+                request.onsuccess = (event) => {
+                    console.log("Get most")
+                    const cursor = event.target.result;
+                    if (cursor) {
+                        // First cursor result will be the most recent due to "prev" ordering
+                        mostRecentJob = cursor.value;
+                        cursor.continue(); // Continue to next item
+                    } else {
+                        // Resolve with the most recent job found
+                        resolve(mostRecentJob);
+                    }
+                };
+    
+                transaction.onerror = (event) => {
+                    console.error("Transaction error:", event.target.error);
+                    reject(event.target.error);
+                };
+            })
+            .catch((err) => {
+                console.error("Error in readMostRecentJob:", err);
+                reject(err);
+            });
+        });
+    }
+    static deleteJobById(jobId) {
+        return new Promise((resolve, reject) => {
+            JobDatabases.openDatabase()
+            .then((db) => {
+                const transaction = db.transaction([DB_NAME], "readwrite");
+                const objectStore = transaction.objectStore(DB_NAME);
+    
+                // Use delete method to remove the job by jobId
+                const deleteRequest = objectStore.delete(jobId);
+    
+                deleteRequest.onsuccess = (event) => {
+                    console.log(`Job with ID ${jobId} deleted successfully`);
+                    db.close();
+                    resolve();
+                };
+    
+                transaction.onerror = (event) => {
+                    console.error(`Error deleting job with ID ${jobId}:`, event.target.error);
+                    reject(event.target.error);
+                };
+    
+                // Optional: Close transaction when done (automatically done after success)
+                transaction.oncomplete = () => {
+                    console.log("Transaction completed: job deleted");
+                };
+            })
+            .catch((error) => {
+                console.error(`Error deleting job with ID ${jobId}:`, error);
+                reject(error);
+            });
+        });
+    }
+    static updateJobById(jobDataJson) {
+        return new Promise((resolve, reject) => {
+            const jobId = jobDataJson.jobId;
+    
+            JobDatabases.openDatabase()
+            .then((db) => {
+                const transaction = db.transaction([DB_NAME], "readwrite");
+                const objectStore = transaction.objectStore(DB_NAME);
+    
+                // Retrieve existing job by jobId
+                const getRequest = objectStore.get(jobId);
+    
+                getRequest.onsuccess = (event) => {
+                    const existingJob = event.target.result;
+                    if (!existingJob) {
+                        reject(`Job with ID ${jobId} not found`);
+                        return;
+                    }
+    
+                    // Update existing job with jobDataJson
+                    Object.assign(existingJob, jobDataJson);
+    
+                    // Put the updated job back into the object store
+                    const updateRequest = objectStore.put(existingJob);
+    
+                    updateRequest.onsuccess = (event) => {
+                        console.log(`Job with ID ${jobId} updated successfully`);
+                        resolve();
+                    };
+    
+                    updateRequest.onerror = (event) => {
+                        console.error(`Error updating job with ID ${jobId}:`, event.target.error);
+                        reject(event.target.error);
+                    };
+                };
+    
+                transaction.onerror = (event) => {
+                    console.error(`Transaction error updating job with ID ${jobId}:`, event.target.error);
+                    reject(event.target.error);
+                };
+    
+                // Optional: Close transaction when done (automatically done after success)
+                transaction.oncomplete = () => {
+                    db.close();
+                    console.log("Transaction completed: job updated");
+                };
+            })
+            .catch((error) => {
+                console.error(`Error updating job with ID ${jobId}:`, error);
+                reject(error);
+            });
         });
     }
 }
