@@ -127,6 +127,7 @@ class DatabaseFunctions:
         return json.dumps(query, cls=DecimalEncoder)
     #Update Job
     #TO DO: Add support for updating keywords
+    @app.route('/databases/update_job', methods=['POST'])
     def update_job():
         cursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
@@ -138,6 +139,7 @@ class DatabaseFunctions:
         DatabaseFunctions.MYDB.commit()
         return '', 204
     #Delete Job
+    @app.route('/databases/delete_job', methods=['POST'])
     def delete_job():
         cursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
