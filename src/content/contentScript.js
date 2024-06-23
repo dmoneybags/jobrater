@@ -304,13 +304,33 @@ TEST = true;
         });
     }
     sendMessageToAddJob = (jobDataJson) => {
-        chrome.runtime.sendMessage({ 
-            greeting: "ADD_JOB", 
-            jobDataJson: jobDataJson 
-        }, function(response) {
-            console.log('Response from background script:', response.farewell);
+        //create a promise to resolve it asynchronously
+        return new Promise((resolve, reject) => {
+            //Our database program runs on port 5001 on our local server
+            var xhr = new XMLHttpRequest();
+            //call an http request
+            xhr.open('POST', 'http://localhost:5001/databases/add_job?jobJson=' + encodeURIComponent(JSON.stringify(jobDataJson)), true);
+            xhr.onload = function () {
+                //It suceeded
+                if (xhr.status === 200) {
+                    //change it to json
+                    var response = JSON.parse(xhr.responseText);
+                    console.log("Request Suceeded");
+                } else {
+                    //Didnt get a sucessful message
+                    console.error('Request failed. Status:', xhr.status);
+                    reject(xhr.status);
+                }
+            };
+            //Couldnt load the http request
+            xhr.onerror = function () {
+                console.error('Request failed. Network error');
+                reject(xhr.statusText);
+            };
+            //send our response
+            xhr.send();
         });
-    }
+    };
     //Called every single time a new job is loaded. Grabs information on the job and sets it in the DB. 
     //View will then render the db.
     const newJobLoaded = (jobId) => {
