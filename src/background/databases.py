@@ -61,18 +61,13 @@ class DatabaseFunctions:
         keywords = jobJson["keywords"][:10]
         return [keywordID, *keywords]
     def get_update_str(jobJson):
-        jobId = jobJson["jobId"]
-        editted_cols_str = ""
-        for key, value in jobJson:
+        editted_cols = []
+        for key, value in jobJson.items():
             updateKey = key
             if key == "location":
                 updateKey = "locationStr"
-            editted_str_str = editted_str_str + f"{updateKey}={value},"
-        return f'''
-        UPDATE Job
-        SET {editted_cols_str}
-        WHERE JobId={jobId};
-        '''
+            editted_cols.append(f"{updateKey} = %s")
+        return ", ".join(editted_cols)
     #Create job
     @app.route('/databases/add_job', methods=['POST'])
     def add_job():
@@ -114,14 +109,14 @@ class DatabaseFunctions:
         cursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
         jobId = json.loads(request.args.get('jobId', default="NO JOB ID LOADED", type=str))
+        query = """
+            SELECT *
+            FROM JOB
+            LEFT JOIN KeywordList ON JOB.KeywordId = KeywordList.KeywordId
+            WHERE JobID = %s;
+        """
         cursor.execute("USE JOBDB")
-        cursor.execute(
-        '''SELECT *
-        FROM JOB
-        WHERE JobID=''' + jobId +
-        '''LEFT JOIN KeywordList
-        ON JOB.KeywordId = KeywordList.KeywordId
-        ''')
+        cursor.execute(query, (jobId,))
         query = cursor.fetchone()
         print(query)
         return json.dumps(query, cls=DecimalEncoder)
@@ -133,9 +128,12 @@ class DatabaseFunctions:
         DatabaseFunctions.MYDB.reconnect()
         jobJson = json.loads(request.args.get('jobJson', default="NO JOB JSON LOADED", type=str))
         print("RECIEVED MESSAGE TO UPDATE JOB WITH ID " + jobJson["jobId"])
-        update_str = DatabaseFunctions.get_update_str()
+        update_str = DatabaseFunctions.get_update_str(jobJson)
+        query = f"UPDATE Job SET {update_str} WHERE JobId = %s"
+        params = list(jobJson.values())
+        params.append(jobJson["jobId"])
         cursor.execute("USE JOBDB")
-        cursor.execute(update_str)
+        cursor.execute(query, params)
         DatabaseFunctions.MYDB.commit()
         return '', 204
     #Delete Job
@@ -144,9 +142,10 @@ class DatabaseFunctions:
         cursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
         jobId = json.loads(request.args.get('jobId', default="NO JOB ID LOADED", type=str))
+        cursor.execute("USE JOBDB")
         cursor.execute(f"DELETE FROM Job WHERE JobId={jobId}")
         DatabaseFunctions.MYDB.commit()
         return '', 204
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    #app.run(debug=True, port=5001)
     pass
