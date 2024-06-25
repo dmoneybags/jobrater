@@ -59,6 +59,15 @@ class DatabaseServer:
         jobId = json.loads(request.args.get('jobId', default="NO JOB ID LOADED", type=str))
         #run the sql code
         return DatabaseFunctions.delete_job(jobId)
+    #We only give the server an option to read companies,
+    #theres no reason for us to make calls to update or delete companies yet
+    @app.route('/databases/read_company', methods=["GET"])
+    def read_job():
+        company = json.loads(request.args.get('company', default="NO COMPANY LOADED", type=str))
+        result = DatabaseFunctions.read_company_by_id(company)
+        if not result:
+            return 'Company not found', 404
+        return result
 if __name__ == '__main__':
     #Run the app on port 5001
     app.run(debug=True, port=5001)
