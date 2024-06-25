@@ -130,7 +130,7 @@ class DatabaseFunctions:
         return '', 204
     #Delete Job
     @app.route('/databases/delete_job', methods=['POST'])
-    def delete_job():
+    def delete_job(jobId):
         cursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
         cursor.execute("USE JOBDB")
