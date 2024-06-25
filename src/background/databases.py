@@ -69,10 +69,7 @@ class DatabaseFunctions:
             editted_cols.append(f"{updateKey} = %s")
         return ", ".join(editted_cols)
     #Create job
-    @app.route('/databases/add_job', methods=['POST'])
-    def add_job():
-        jobJson = json.loads(request.args.get('jobJson', default="NO JOB JSON LOADED", type=str))
-        print("RECIEVED MESSAGE TO ADD JOB WITH ID " + jobJson["jobId"])
+    def add_job(jobJson):
         keywordUuidStr = str(uuid.uuid1())
         jobAddStr = "INSERT INTO Job (JobId, Applicants, BusinessOutlookRating, CareerOpportunitiesRating, CareerStage, CeoRating, Company, CompensationAndBenefitsRating, CultureAndValuesRating, DiversityAndInclusionRating, Job, KeywordID, LocationStr, Mode, OverallRating, PaymentBase, PaymentFreq, PaymentHigh, SecondsPostedAgo, SeniorManagementRating, WorkLifeBalanceRating) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
         keywordAddStr = "INSERT INTO KeywordList (KeywordID, Keyword1, Keyword2, Keyword3, Keyword4, Keyword5, Keyword6, Keyword7, Keyword8, Keyword9, Keyword10) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
@@ -89,7 +86,6 @@ class DatabaseFunctions:
         return '', 204
     #Read most recent job
     #Mostly for test code, in reality index.html will work by grabbing an event of the most recent id
-    @app.route('/databases/read_most_recent_job', methods=['GET'])
     def read_most_recent_job():
         cursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
@@ -104,11 +100,9 @@ class DatabaseFunctions:
         print(query)
         return json.dumps(query, cls=DecimalEncoder)
     #Grabs job by id
-    @app.route('/databases/read_job_by_id', methods=['GET'])
-    def read_job_by_id():
+    def read_job_by_id(jobId):
         cursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
-        jobId = json.loads(request.args.get('jobId', default="NO JOB ID LOADED", type=str))
         query = """
             SELECT *
             FROM JOB
@@ -122,11 +116,9 @@ class DatabaseFunctions:
         return json.dumps(query, cls=DecimalEncoder)
     #Update Job
     #TO DO: Add support for updating keywords
-    @app.route('/databases/update_job', methods=['POST'])
-    def update_job():
+    def update_job(jobJson):
         cursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
-        jobJson = json.loads(request.args.get('jobJson', default="NO JOB JSON LOADED", type=str))
         print("RECIEVED MESSAGE TO UPDATE JOB WITH ID " + jobJson["jobId"])
         update_str = DatabaseFunctions.get_update_str(jobJson)
         query = f"UPDATE Job SET {update_str} WHERE JobId = %s"
@@ -141,11 +133,30 @@ class DatabaseFunctions:
     def delete_job():
         cursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
-        jobId = json.loads(request.args.get('jobId', default="NO JOB ID LOADED", type=str))
         cursor.execute("USE JOBDB")
         cursor.execute(f"DELETE FROM Job WHERE JobId={jobId}")
         DatabaseFunctions.MYDB.commit()
         return '', 204
+class DatabaseServer:
+    @app.route('/databases/add_job', methods=['POST'])
+    def add_job():
+        jobJson = json.loads(request.args.get('jobJson', default="NO JOB JSON LOADED", type=str))
+        print("RECIEVED MESSAGE TO ADD JOB WITH ID " + jobJson["jobId"])
+        return DatabaseFunctions.add_job(jobJson)
+    @app.route('/databases/read_most_recent_job', methods=['GET'])
+    def read_most_recent_job():
+        return DatabaseFunctions.read_most_recent_job()
+    @app.route('/databases/read_job_by_id', methods=['GET'])
+    def read_job_by_id():
+        jobId = json.loads(request.args.get('jobId', default="NO JOB ID LOADED", type=str))
+        return DatabaseFunctions.read_job_by_id(jobId)
+    @app.route('/databases/update_job', methods=['POST'])
+    def update_job():
+        jobJson = json.loads(request.args.get('jobJson', default="NO JOB JSON LOADED", type=str))
+        return DatabaseFunctions.update_job(jobJson)
+    @app.route('/databases/delete_job', methods=['POST'])
+    def delete_job():
+        jobId = json.loads(request.args.get('jobId', default="NO JOB ID LOADED", type=str))
+        return DatabaseFunctions.delete_job(jobId)
 if __name__ == '__main__':
-    #app.run(debug=True, port=5001)
-    pass
+    app.run(debug=True, port=5001)
