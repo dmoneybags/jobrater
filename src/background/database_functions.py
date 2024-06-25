@@ -159,15 +159,19 @@ class DatabaseFunctions:
     #Returns the query to read the most recent job
     def get_most_recent_job_query():
         return '''SELECT *
-        FROM JOB
+        FROM Job
         LEFT JOIN KeywordList
-        ON JOB.KeywordId = KeywordList.KeywordId
+        ON Job.KeywordId = KeywordList.KeywordId
+        LEFT JOIN Company
+        ON Company.Company = Job.Company
         ORDER BY TimeAdded DESC'''
     def get_select_job_by_id_query():
         return """
             SELECT *
-            FROM JOB
-            LEFT JOIN KeywordList ON JOB.KeywordId = KeywordList.KeywordId
+            LEFT JOIN KeywordList
+            ON Job.KeywordId = KeywordList.KeywordId
+            LEFT JOIN Company
+            ON Company.Company = Job.Company
             WHERE JobID = %s;
         """
     def get_delete_job_by_id_query():
