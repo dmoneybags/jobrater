@@ -1,3 +1,15 @@
+'''
+Execution flow:
+
+Index.js
+Listens for: when the popup is openned
+Executes: a call to lookup the job location
+\/
+\/
+Google_places.py
+Listens for requests on port 5002
+'''
+
 from flask import Flask, request, jsonify
 import os
 import requests

@@ -1,4 +1,13 @@
 /*
+Execution
+
+background.js
+Listens for: tab changes with the required linkedin urls 
+Executes: processing the query to get the job id 
+Sends: a message to contentscript to scrape the job
+*/
+
+/*
 First order data needed:
 
 *from url
@@ -21,6 +30,7 @@ Tertiary data needed:
 commute time
 */
 // Listen for tab updates to specific LinkedIn job URLs
+// The event is fired everytime a user changes tabs
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     //Check for URL matches
     if (tab.url && (tab.url.includes("linkedin.com/jobs/search") || 
