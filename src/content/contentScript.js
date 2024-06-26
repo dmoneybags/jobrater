@@ -309,7 +309,8 @@ TEST = true;
             xhr.send();
         });
     };
-    //This function simply 
+    //This function simply checks if the company exists by 
+    //querying our db
     const checkIfCompanyExists = (company) => {
         //create a promise to resolve it asynchronously
         return new Promise((resolve, reject) => {
@@ -321,11 +322,8 @@ TEST = true;
                 //It suceeded
                 if (xhr.status == 200){
                     resolve(true)
-                //Not sure if this line is necessary?
-                } else if (xhr.status == 500){
-                    console.error("Python script failed reading company")
-                    reject(xhr.statusText);
                 } else {
+                    console.log("Couldn't find the company in our database, scraping glassdoor");
                     resolve(false)
                 }
             };
@@ -339,7 +337,7 @@ TEST = true;
         });
     }
     const scrapeCompanyInfoIfNeeded = (jobDataJson) => {
-        checkIfCompanyExists(jobDataJson["company"])
+        return checkIfCompanyExists(jobDataJson["company"])
         .then((doesExist) => {
             return new Promise((resolve, reject) => {
                 if (doesExist) {
@@ -411,8 +409,7 @@ TEST = true;
             //Store the job ID as a UUID for our db
             jobDataJson["jobId"] = jobId;
             //Grabs the info from our python program which scrapes the glassdoor website.
-            scrapeCompanyInfoIfNeeded(jobDataJson)
-            .then((jobDataJson) => {
+            scrapeCompanyInfoIfNeeded(jobDataJson).then((jobDataJson) => {
                 sendMessageToAddJob(jobDataJson)
             })
         });

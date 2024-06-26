@@ -39,7 +39,19 @@ import os
 import uuid
 from decimal import Decimal
 import datetime
+from collections import OrderedDict
 
+#Columns in our DB
+JOB_COLUMNS = ["jobId", "applicants", "careerStage", 
+        "company", "job", "KeywordID", "location", "mode", 
+        "paymentBase", "paymentFreq", "paymentHigh", "secondsPostedAgo"]
+#The columns in our keyword db
+KEYWORD_COLUMNS = ["KeywordID", "Keyword1", "Keyword2", "Keyword3", "Keyword4", "Keyword5", "Keyword6",
+        "Keyword7", "Keyword8", "Keyword9", "Keyword10"]
+#The columns in our company db
+COMPANY_COLUMNS = ["company", "businessOutlookRating", "careerOpportunitiesRating", "ceoRating",
+                "compensationAndBenefitsRating", "cultureAndValuesRating", "diversityAndInclusionRating",
+                "overallRating", "seniorManagementRating", "workLifeBalanceRating"]
 #a custom json decoder, needed because our items in our DB are stored as Decimals
 #and datetimes
 class DecimalEncoder(json.JSONEncoder):
@@ -68,23 +80,23 @@ class DatabaseFunctions:
         cursor = DatabaseFunctions.MYDB.cursor()
         with open(f, "r") as sqlFile:
             cursor.execute(sqlFile.read(), multi=True)
+        DatabaseFunctions.MYDB.commit()
     #Takes in the job json and returns the list of strings that the sql command
     #expect
-    def get_job_values(job_json, keyword_ID):
-        #Columns in our DB
-        vals = ["jobId", "applicants", "careerStage", 
-                "company", "job", "KeywordID", "location", "mode", 
-                "paymentBase", "paymentFreq", "paymentHigh", "secondsPostedAgo"]
+    def get_job_dict(job_json, keyword_ID):
         #Generate a list of 0s as placeholders
-        zero_filled_job_data = [0] * len(vals)
-        for i in range(len(vals)):
+        zero_filled_job_data = {}
+        for col in JOB_COLUMNS:
             #Our job data doesn't come with a KeywordID, we generate it on the backend
-            if vals[i] == "KeywordID":
-                zero_filled_job_data[i] = keyword_ID
+            if col == "KeywordID":
+                zero_filled_job_data[col] = keyword_ID
+            if col == "location":
+                    zero_filled_job_data["locationStr"] = str(job_json["location"])
+                    continue
             try:
                 #Does our job has an entry for the value? it always should but just a try-except for safety
-                val = str(job_json[vals[i]])
-                zero_filled_job_data[i] = 0 if val == '' else val
+                val = str(job_json[col])
+                zero_filled_job_data[col] = 0 if val == '' else val
             except KeyError:
                 continue
         return zero_filled_job_data
@@ -93,23 +105,17 @@ class DatabaseFunctions:
     #and the job db having a corresponing keyword ID Foreign key
     #Returns a json dictionary of the column name to the keyword value
     def get_keyword_values(job_json, keyword_ID):
-        #The columns in our keyword db
-        vals = ["KeywordID", "Keyword1", "Keyword2", "Keyword3", "Keyword4", "Keyword5", "Keyword6",
-                "Keyword7", "Keyword8", "Keyword9", "Keyword10"]
         #We only want the top 10 keyword
         keywords = job_json["keywords"][:10]
         return [keyword_ID, *keywords]
     #Our company values are added into a separate db, we run this function
     #to get the json dictionary to represent the values for the add
-    def get_company_values(job_json):
-        vals = ["company", "businessOutlookRating", "careerOpportunitiesRating", "ceoRating",
-                "compensationAndBenefitsRating", "cultureAndValuesRating", "diversityAndInclusionRating",
-                "overallRating", "seniorManagementRating", "workLifeBalanceRating"]
-        zero_filled_company_data = [0] * len(vals)
-        for i in range(len(vals)):
-            val = str(job_json[vals[i]])
+    def get_company_dict(job_json):
+        zero_filled_company_data = {}
+        for col in COMPANY_COLUMNS:
             try:
-                zero_filled_company_data[i] = 0 if val == '' else val
+                val = str(job_json[col])
+                zero_filled_company_data[col] = 0 if val == '' else val
             except KeyError:
                 continue
         return zero_filled_company_data
@@ -132,7 +138,7 @@ class DatabaseFunctions:
     #turns the json into a query for sql
     def get_update_str_job(job_json):
         #We're just updating the job here, no foreign keys
-        job_json_without_company_and_keywords = DatabaseFunctions.get_job_values()
+        job_json_without_company_and_keywords = DatabaseFunctions.get_job_dict()
         editted_cols = []
         for key, value in job_json_without_company_and_keywords.items():
             update_key = key
@@ -146,9 +152,6 @@ class DatabaseFunctions:
         return update_str
     #Gets the sql code to update a company
     def get_update_str_company(company_values):
-        #We never want to update the primary key and its passed separately in the query
-        #lets remove it
-        del company_values["company"]
         editted_cols = []
         for key, value in company_values.items():
             #%s allows us to inject our values into the string
@@ -167,7 +170,8 @@ class DatabaseFunctions:
         ORDER BY TimeAdded DESC'''
     def get_select_job_by_id_query():
         return """
-            SELECT *
+            SELECT * 
+            FROM JOB
             LEFT JOIN KeywordList
             ON Job.KeywordId = KeywordList.KeywordId
             LEFT JOIN Company
@@ -187,12 +191,13 @@ class DatabaseFunctions:
     #Create company
     #Yes it takes an arg of job_json but theoretically could be called on simply company_json
     def add_company(job_json):
-        company_values = DatabaseFunctions.get_company_values(job_json)
+        company_values = DatabaseFunctions.get_company_dict(job_json)
         company_add_Str = DatabaseFunctions.get_company_add_query(company_values)
         cursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
+        cursor.execute("USE JOBDB")
         cursor.execute(company_add_Str, list(company_values.values()))
-        print("JOB SUCCESSFULLY ADDED")
+        print("COMPANY SUCCESSFULLY ADDED")
         DatabaseFunctions.MYDB.commit()
         return '', 204
     #Read company
@@ -204,13 +209,14 @@ class DatabaseFunctions:
         cursor.execute(query, (company_name,))
         result = cursor.fetchone()
         print(result)
-        #Convert the response to json
         if not result:
             return None
-        return json.dumps(result, cls=DecimalEncoder)
+        # Map column names to values
+        result_dict = OrderedDict(zip(COMPANY_COLUMNS, result))
+        return json.dumps(result_dict, cls=DecimalEncoder)
     #Update company
     def update_company(job_json):
-        company_values = DatabaseFunctions.get_company_values(company_values)
+        company_values = DatabaseFunctions.get_company_dict(job_json)
         cursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
         print("RECIEVED MESSAGE TO UPDATE Company WITH ID " + company_values["company"])
@@ -253,15 +259,17 @@ class DatabaseFunctions:
     def add_job(job_json):
         #Generate a uuid for our keyword db
         keyword_uuid_str = str(uuid.uuid1())
-        job_values = DatabaseFunctions.get_job_values(job_json)
-        job_add_str = DatabaseFunctions.get_job_add_query(DatabaseFunctions.get_job_add_query(job_values))
+        job_values = DatabaseFunctions.get_job_dict(job_json, keyword_uuid_str)
+        job_add_str = DatabaseFunctions.get_job_add_query(job_values)
         DatabaseFunctions.add_keywords(job_json, keyword_uuid_str)
         #check that the company isn't already in our DB if it isn't then we add it
         if not DatabaseFunctions.read_company_by_id(job_values["company"]):
             DatabaseFunctions.add_company(job_json)
         cursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
+        cursor.execute("USE JOBDB")
         #grab the job json
+        print(job_add_str)
         cursor.execute(job_add_str, list(job_values.values()))
         print("JOB SUCCESSFULLY ADDED")
         DatabaseFunctions.MYDB.commit()
@@ -281,28 +289,31 @@ class DatabaseFunctions:
         #Grab the first
         result = cursor.fetchone()
         print(result)
-        #Convert the response to json
-        return json.dumps(result, cls=DecimalEncoder)
+        # Map column names to values
+        result_dict = OrderedDict(zip(JOB_COLUMNS, result))
+        return json.dumps(result_dict, cls=DecimalEncoder)
     #Grabs job by id
     def read_job_by_id(jobId):
         cursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
-        result = DatabaseFunctions.get_select_job_by_id_query()
+        query = DatabaseFunctions.get_select_job_by_id_query()
         #Switch to JOBDB
         cursor.execute("USE JOBDB")
         #Pass the job Id to be inserted into the query
-        cursor.execute(result, (jobId,))
+        cursor.execute(query, (jobId,))
         result = cursor.fetchone()
         print(result)
-        #Conver the response to json
-        return json.dumps(result, cls=DecimalEncoder)
+        # Fetch column names from the cursor
+        column_names = [desc[0] for desc in cursor.description]
+        # Map column names to values
+        result_dict = OrderedDict(zip(JOB_COLUMNS, result))
+        return json.dumps(result_dict, cls=DecimalEncoder)
     #Update Job
     #TO DO: Add support for updating keywords
     def update_job(job_json):
-        job_values = DatabaseFunctions.get_company_values()
+        job_values = DatabaseFunctions.get_company_dict()
         cursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
-        print("RECIEVED MESSAGE TO UPDATE JOB WITH ID " + job_values["jobId"])
         #Grab the specific update columns to add to our query
         update = DatabaseFunctions.get_update_str_job(job_values)
         #convert the values of our json to a list
@@ -323,7 +334,7 @@ class DatabaseFunctions:
         DatabaseFunctions.MYDB.reconnect()
         #Switch to our jobDb
         cursor.execute("USE JOBDB")
-        query = DatabaseFunctions.get_delete_job_by_id_query(jobId)
+        query = DatabaseFunctions.get_delete_job_by_id_query()
         #Run the sql to delete the job
         cursor.execute(query, (jobId,))
         DatabaseFunctions.MYDB.commit()

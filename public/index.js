@@ -1,7 +1,7 @@
 sendMessageToGetLocation = (jobDataJson) => {
     //create a promise to resolve it asynchronously
     return new Promise((resolve, reject) => {
-        //Our database program runs on port 5001 on our local server
+        //Our database program runs on port 5002 on our local server
         var xhr = new XMLHttpRequest();
         //call an http request
         xhr.open('GET', 'http://localhost:5002/google_places/address?company=' + encodeURIComponent(jobDataJson["company"]) + "&locationStr=" + encodeURIComponent(jobDataJson["location"]), true);

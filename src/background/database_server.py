@@ -19,7 +19,7 @@ Listens for: requests sent on PORT 5001
 Executes the database functions to CRUD jobs
 '''
 
-from flask import Flask
+from flask import Flask, abort
 from database_functions import DatabaseFunctions
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -42,12 +42,18 @@ class DatabaseServer:
     @app.route('/databases/read_most_recent_job', methods=['GET'])
     def read_most_recent_job():
         #Call the database function to select and sort to the most recent job
-        return DatabaseFunctions.read_most_recent_job()
+        result = DatabaseFunctions.read_most_recent_job()
+        if not result:
+            abort(404)
+        return result
     @app.route('/databases/read_job_by_id', methods=['GET'])
     def read_job_by_id():
         #Grab the jobId from the request, it is in the form of a string
         jobId = json.loads(request.args.get('jobId', default="NO JOB ID LOADED", type=str))
-        return DatabaseFunctions.read_job_by_id(jobId)
+        result = DatabaseFunctions.read_job_by_id(jobId)
+        if not result:
+            abort(404)
+        return result
     @app.route('/databases/update_job', methods=['POST'])
     def update_job():
         #We take an argument of the whole job data in the from a json string
@@ -62,11 +68,12 @@ class DatabaseServer:
     #We only give the server an option to read companies,
     #theres no reason for us to make calls to update or delete companies yet
     @app.route('/databases/read_company', methods=["GET"])
-    def read_job():
-        company = json.loads(request.args.get('company', default="NO COMPANY LOADED", type=str))
+    def read_company():
+        company = request.args.get('company', default="NO COMPANY LOADED", type=str)
+        print("Recieved message to read company: " + company)
         result = DatabaseFunctions.read_company_by_id(company)
         if not result:
-            return 'Company not found', 404
+            abort(404)
         return result
 if __name__ == '__main__':
     #Run the app on port 5001
