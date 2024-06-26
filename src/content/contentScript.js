@@ -1,14 +1,29 @@
+/*
+Execution
+
+background.js
+Listens for: tab changes with the required linkedin urls 
+Executes: processing the query to get the job id 
+Sends: a message to contentscript to scrape the job
+\/
+\/
+contentScript.js
+Listens for: requests with the type NEW
+Executes: scraping for linkedin and glassdoor
+Sends: a message for db to handle the job
+*/
+
+
 //Runs all the content after we get new jobloaded message, basically grabbing all our data and putting it in our db
 //ISSUES:
 //topbox has trouble being grabbed when the page first loads in
 //TO DO:
-//CRUD Methods
-//Add competitiveness algo taking, applicants, company and job prestige, required experience
-//Get company address
+//CRUD Methods X
+//Will do later: Add competitiveness algo taking, applicants, company and job prestige, required experience
+//Get company address X
 //Google maps api
-//Salary benchmarking
-//UI
 //User data
+//UI
 //Payments
 //deployment
 TEST = true;
@@ -294,7 +309,60 @@ TEST = true;
             xhr.send();
         });
     };
-    waitForDocumentLoaded = () => {
+    //This function simply checks if the company exists by 
+    //querying our db
+    const checkIfCompanyExists = (company) => {
+        //create a promise to resolve it asynchronously
+        return new Promise((resolve, reject) => {
+            //Our python program runs on port 5000 on our local server
+            var xhr = new XMLHttpRequest();
+            //call an http request
+            xhr.open('GET', 'http://localhost:5001/databases/read_company?company=' + encodeURIComponent(company), true);
+            xhr.onload = function () {
+                //It suceeded
+                if (xhr.status == 200){
+                    resolve(true)
+                } else {
+                    console.log("Couldn't find the company in our database, scraping glassdoor");
+                    resolve(false)
+                }
+            };
+            //Couldnt load the http request
+            xhr.onerror = function () {
+                console.error('Request failed. Network error');
+                reject(xhr.statusText);
+            };
+            //send our response
+            xhr.send();
+        });
+    }
+    const scrapeCompanyInfoIfNeeded = (jobDataJson) => {
+        return checkIfCompanyExists(jobDataJson["company"])
+        .then((doesExist) => {
+            return new Promise((resolve, reject) => {
+                if (doesExist) {
+                    resolve(jobDataJson)
+                } else {
+                    scrapeGlassdoorInfo(jobDataJson["company"])
+                        .then(processedValue => {
+                            //merge our dictionaries
+                            jobDataJson = { ...jobDataJson, ...processedValue };
+                            resolve(jobDataJson);
+                        })
+                        .catch(error => {
+                            //Log that the glassdoor data couldn't be grabbed
+                            console.error('Error:', error);
+                            reject(error);
+                        });
+                }
+            })
+        })
+        .catch(error => {
+            //Log that the company check data couldn't be grabbed
+            console.error('Error:', error);
+        });
+    }
+    const waitForDocumentLoaded = () => {
         return new Promise((resolve) => {
             if (document.readyState === 'complete' || document.readyState === 'interactive') {
                 resolve();
@@ -303,7 +371,7 @@ TEST = true;
             }
         });
     }
-    sendMessageToAddJob = (jobDataJson) => {
+    const sendMessageToAddJob = (jobDataJson) => {
         //create a promise to resolve it asynchronously
         return new Promise((resolve, reject) => {
             //Our database program runs on port 5001 on our local server
@@ -341,18 +409,9 @@ TEST = true;
             //Store the job ID as a UUID for our db
             jobDataJson["jobId"] = jobId;
             //Grabs the info from our python program which scrapes the glassdoor website.
-            scrapeGlassdoorInfo(jobDataJson["company"])
-            //promise the return
-                .then(processedValue => {
-                    //merge our dictionaries
-                    jobDataJson = { ...jobDataJson, ...processedValue };
-                    console.log(jobDataJson);
-                    sendMessageToAddJob(jobDataJson);
-                })
-                .catch(error => {
-                    //Log that the glassdoor data couldn't be grabbed
-                    console.error('Error:', error);
-                });
+            scrapeCompanyInfoIfNeeded(jobDataJson).then((jobDataJson) => {
+                sendMessageToAddJob(jobDataJson)
+            })
         });
     }
     newJobLoaded();
