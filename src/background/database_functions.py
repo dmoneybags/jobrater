@@ -118,6 +118,9 @@ class DatabaseFunctions:
                 zero_filled_company_data[col] = 0 if val == '' else val
             except KeyError:
                 continue
+        print("Recieved company dictionary of: " +
+            json.dumps(zero_filled_company_data)
+        )
         return zero_filled_company_data
     #Generates the sql string to add a company, using string replacement
     def get_company_add_query(company_values):
@@ -199,7 +202,7 @@ class DatabaseFunctions:
         cursor.execute(company_add_Str, list(company_values.values()))
         print("COMPANY SUCCESSFULLY ADDED")
         DatabaseFunctions.MYDB.commit()
-        return '', 204
+        return 'success', 200
     #Read company
     def read_company_by_id(company_name):
         query = DatabaseFunctions.get_select_company_by_name_query()
@@ -232,7 +235,7 @@ class DatabaseFunctions:
         cursor.execute(update, params)
         DatabaseFunctions.MYDB.commit()
         #return success
-        return '', 204
+        return 'success', 200
     #Delete company
     def delete_company(company):
         cursor = DatabaseFunctions.MYDB.cursor()
@@ -243,7 +246,7 @@ class DatabaseFunctions:
         #Run the sql to delete the job
         cursor.execute(query, (company,))
         DatabaseFunctions.MYDB.commit()
-        return '', 204
+        return 'success', 200
     #Create keywords
     def add_keywords(job_json, keyword_uuid_str):
         keyword_add_str = DatabaseFunctions.get_keyword_add_query()
@@ -257,6 +260,11 @@ class DatabaseFunctions:
         DatabaseFunctions.MYDB.commit()
     #Create job
     def add_job(job_json):
+        job_id = job_json["jobId"]
+        #The job is already in our db
+        #Prevents duplicate keywords
+        if (DatabaseFunctions.read_job_by_id(job_id)):
+            return 'success', 200
         #Generate a uuid for our keyword db
         keyword_uuid_str = str(uuid.uuid1())
         job_values = DatabaseFunctions.get_job_dict(job_json, keyword_uuid_str)
@@ -273,7 +281,7 @@ class DatabaseFunctions:
         cursor.execute(job_add_str, list(job_values.values()))
         print("JOB SUCCESSFULLY ADDED")
         DatabaseFunctions.MYDB.commit()
-        return '', 204
+        return 'success', 200
     #Read most recent job
     #Mostly for test code, in reality index.html will work by grabbing an event of the most recent id
     def read_most_recent_job():
@@ -289,6 +297,8 @@ class DatabaseFunctions:
         #Grab the first
         result = cursor.fetchone()
         print(result)
+        if not result:
+            return None
         # Map column names to values
         result_dict = OrderedDict(zip(JOB_COLUMNS, result))
         return json.dumps(result_dict, cls=DecimalEncoder)
@@ -303,6 +313,8 @@ class DatabaseFunctions:
         cursor.execute(query, (jobId,))
         result = cursor.fetchone()
         print(result)
+        if not result:
+            return None
         # Fetch column names from the cursor
         column_names = [desc[0] for desc in cursor.description]
         # Map column names to values
@@ -326,7 +338,7 @@ class DatabaseFunctions:
         cursor.execute(update, params)
         DatabaseFunctions.MYDB.commit()
         #return success
-        return '', 204
+        return 'success', 200
     #Delete Job
     #takes an argument of the string job id
     def delete_job(jobId):
@@ -338,4 +350,4 @@ class DatabaseFunctions:
         #Run the sql to delete the job
         cursor.execute(query, (jobId,))
         DatabaseFunctions.MYDB.commit()
-        return '', 204
+        return 'success', 200

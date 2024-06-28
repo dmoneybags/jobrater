@@ -317,10 +317,12 @@ TEST = true;
             //Our python program runs on port 5000 on our local server
             var xhr = new XMLHttpRequest();
             //call an http request
+            console.log("Sending Request to get company");
             xhr.open('GET', 'http://localhost:5001/databases/read_company?company=' + encodeURIComponent(company), true);
             xhr.onload = function () {
                 //It suceeded
                 if (xhr.status == 200){
+                    console.log("Recieved the company from the db");
                     resolve(true)
                 } else {
                     console.log("Couldn't find the company in our database, scraping glassdoor");
@@ -341,25 +343,29 @@ TEST = true;
         .then((doesExist) => {
             return new Promise((resolve, reject) => {
                 if (doesExist) {
-                    resolve(jobDataJson)
+                    console.log("Returning job data without scraping for company");
+                    resolve(jobDataJson);
                 } else {
+                    console.log("SCRAPING GLASSDOOR");
                     scrapeGlassdoorInfo(jobDataJson["company"])
                         .then(processedValue => {
                             //merge our dictionaries
                             jobDataJson = { ...jobDataJson, ...processedValue };
                             resolve(jobDataJson);
                         })
+                        //THIS IS AN ERROR FROM OUR GLASSDOOR SERVER
                         .catch(error => {
                             //Log that the glassdoor data couldn't be grabbed
-                            console.error('Error:', error);
-                            reject(error);
+                            console.error("-------- GLASS DOOR SCRAPE FAILED --------");
+                            resolve(jobDataJson);
                         });
                 }
             })
         })
+        //THIS IS AN ERROR FROM OUR DATABASE SERVER
         .catch(error => {
             //Log that the company check data couldn't be grabbed
-            console.error('Error:', error);
+            console.error("-------- COULDNT COMPLETE COMPANY INFO --------");
         });
     }
     const waitForDocumentLoaded = () => {
@@ -382,8 +388,8 @@ TEST = true;
                 //It suceeded
                 if (xhr.status === 200) {
                     //change it to json
-                    var response = JSON.parse(xhr.responseText);
-                    console.log("Request Suceeded");
+                    var response = xhr.responseText;
+                    console.log("Add Job Request Suceeded");
                 } else {
                     //Didnt get a sucessful message
                     console.error('Request failed. Status:', xhr.status);
@@ -409,7 +415,8 @@ TEST = true;
             //Store the job ID as a UUID for our db
             jobDataJson["jobId"] = jobId;
             //Grabs the info from our python program which scrapes the glassdoor website.
-            scrapeCompanyInfoIfNeeded(jobDataJson).then((jobDataJson) => {
+            scrapeCompanyInfoIfNeeded(jobDataJson)
+            .then((jobDataJson) => {
                 sendMessageToAddJob(jobDataJson)
             })
         });
