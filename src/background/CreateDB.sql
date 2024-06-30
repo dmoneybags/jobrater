@@ -2,6 +2,14 @@ DROP DATABASE IF EXISTS JOBDB;
 CREATE DATABASE JOBDB;
 USE JOBDB;
 
+CREATE TABLE User (
+    UserID VARCHAR(36) NOT NULL,
+    Email VARCHAR(255) NOT NULL UNIQUE,
+    Password VARCHAR(255),
+    Google_Id VARCHAR(255) UNIQUE,
+    Name VARCHAR(255),
+CONSTRAINT User_PK PRIMARY KEY (UserID)
+);
 CREATE TABLE KeywordList
 (
     KeywordID VARCHAR(36) NOT NULL,
@@ -53,6 +61,7 @@ CREATE TABLE Job
     LocationViaGoogleMaps VARCHAR(70),
     TimeAdded timestamp default current_timestamp not null,
 CONSTRAINT Job_PK PRIMARY KEY (JobId),
+CONSTRAINT User_foreign_key_user FOREIGN KEY (User) REFERENCES User(UserID), 
 CONSTRAINT Job_foreign_key_company FOREIGN KEY (Company) REFERENCES Company(Company),
 CONSTRAINT Job_foreign_key_keywords FOREIGN KEY (KeywordID) REFERENCES KeywordList(KeywordID)
 ON DELETE CASCADE
