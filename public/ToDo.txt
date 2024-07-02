@@ -1,0 +1,14 @@
+7/2/24:
+
+Put appropriate things server-side:
+    a lot of the code that should be server side isn't, db calls, auth stuff, glassdoor dispatcher,
+    Their logic will have to be routed through the app listener in background js. Shouldn't be too
+    hard. 
+Finish User code:
+    last function written was the google auth code:
+        NOTE: we still need to activate this on our google dashboard
+        NOTE: we still need to add functionality for sendMessageToAddUser
+        NOTE: we still only have a placeholder url in our google auth code
+    we are simply going top down
+Implement tokens:
+    part of the above task but still important

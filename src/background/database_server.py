@@ -116,6 +116,43 @@ class DatabaseServer:
         if not result:
             abort(404)
         return result
+    @app.route('/databases/get_user_by_email', methods=["GET"])
+    def get_user_by_email():
+        try:
+            email = request.args.get('email', default="NO EMAIL LOADED", type=str)
+        except:
+            print("Request of: " + request + " is invalid")
+            #Invalid request
+            return abort(403)
+        result = DatabaseFunctions.read_user_by_email(email)
+        if not result:
+            abort(404)
+        return result
+    @app.route('/databases/get_user_by_googleId', methods=["GET"])
+    def get_user_by_googleId():
+        try:
+            googleId = request.args.get('googleId', default="NO googleId LOADED", type=str)
+        except:
+            print("Request of: " + request + " is invalid")
+            #Invalid request
+            return abort(403)
+        result = DatabaseFunctions.read_user_by_googleId(googleId)
+        if not result:
+            abort(404)
+        return result
+    @app.route('/databases/add_user', methods=["POST"])
+    def add_user():
+        try:
+            user = request.args.get('user', default="NO USER LOADED", type=str)
+            user_json = json.loads(user)
+        except:
+            print("Request of: " + request + " is invalid")
+            #Invalid request
+            return abort(403)
+        #THIS ADDS THE JOB AND COMPANY AND KEYWORDS EACH TO THEIR
+        #INDIVIDUAL TABLES
+        response_code = DatabaseFunctions.add_user(user_json)
+        return response_code
 if __name__ == '__main__':
     #Run the app on port 5001
     app.run(debug=True, port=5001)

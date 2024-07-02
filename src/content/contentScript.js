@@ -278,66 +278,6 @@ TEST = true;
         const descriptionData = getJobInfoData();
         return { ...jobData, ...topBoxData, ...descriptionData };
     }
-    //Calls our python program to scrape info from glassdoor
-    const scrapeGlassdoorInfo = (company) => {
-        //create a promise to resolve it asynchronously
-        return new Promise((resolve, reject) => {
-            //Our python program runs on port 5000 on our local server
-            var xhr = new XMLHttpRequest();
-            //call an http request
-            xhr.open('GET', 'http://localhost:5000/get_glassdoor_data?company=' + encodeURIComponent(company), true);
-            xhr.onload = function () {
-                //It suceeded
-                if (xhr.status === 200) {
-                    //change it to json
-                    var response = JSON.parse(xhr.responseText);
-                    console.log(response)
-                    //resolve the promist
-                    resolve(response);
-                } else {
-                    //Didnt get a sucessful message
-                    console.error('Request failed. Status:', xhr.status);
-                    reject(xhr.status);
-                }
-            };
-            //Couldnt load the http request
-            xhr.onerror = function () {
-                console.error('Request failed. Network error');
-                reject(xhr.statusText);
-            };
-            //send our response
-            xhr.send();
-        });
-    };
-    //This function simply checks if the company exists by 
-    //querying our db
-    const checkIfCompanyExists = (company) => {
-        //create a promise to resolve it asynchronously
-        return new Promise((resolve, reject) => {
-            //Our python program runs on port 5000 on our local server
-            var xhr = new XMLHttpRequest();
-            //call an http request
-            console.log("Sending Request to get company");
-            xhr.open('GET', 'http://localhost:5001/databases/read_company?company=' + encodeURIComponent(company), true);
-            xhr.onload = function () {
-                //It suceeded
-                if (xhr.status == 200){
-                    console.log("Recieved the company from the db");
-                    resolve(true)
-                } else {
-                    console.log("Couldn't find the company in our database, scraping glassdoor");
-                    resolve(false)
-                }
-            };
-            //Couldnt load the http request
-            xhr.onerror = function () {
-                console.error('Request failed. Network error');
-                reject(xhr.statusText);
-            };
-            //send our response
-            xhr.send();
-        });
-    }
     const scrapeCompanyInfoIfNeeded = (jobDataJson) => {
         return checkIfCompanyExists(jobDataJson["company"])
         .then((doesExist) => {
@@ -377,34 +317,6 @@ TEST = true;
             }
         });
     }
-    const sendMessageToAddJob = (jobDataJson) => {
-        //create a promise to resolve it asynchronously
-        return new Promise((resolve, reject) => {
-            //Our database program runs on port 5001 on our local server
-            var xhr = new XMLHttpRequest();
-            //call an http request
-            xhr.open('POST', 'http://localhost:5001/databases/add_job?jobJson=' + encodeURIComponent(JSON.stringify(jobDataJson)), true);
-            xhr.onload = function () {
-                //It suceeded
-                if (xhr.status === 200) {
-                    //change it to json
-                    var response = xhr.responseText;
-                    console.log("Add Job Request Suceeded");
-                } else {
-                    //Didnt get a sucessful message
-                    console.error('Request failed. Status:', xhr.status);
-                    reject(xhr.status);
-                }
-            };
-            //Couldnt load the http request
-            xhr.onerror = function () {
-                console.error('Request failed. Network error');
-                reject(xhr.statusText);
-            };
-            //send our response
-            xhr.send();
-        });
-    };
     //Called every single time a new job is loaded. Grabs information on the job and sets it in the DB. 
     //View will then render the db.
     const newJobLoaded = (jobId) => {
