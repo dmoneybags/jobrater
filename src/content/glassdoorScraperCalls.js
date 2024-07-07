@@ -16,10 +16,10 @@ calls our python flask server to dispatch the glassdoor scraper
 const scrapeGlassdoorInfo = (company) => {
     //create a promise to resolve it asynchronously
     return new Promise((resolve, reject) => {
-        //Our python program runs on port 5000 on our local server
+        //Our python program runs on port 5009 on our local server
         var xhr = new XMLHttpRequest();
         //call an http request
-        xhr.open('GET', 'http://localhost:5000/get_glassdoor_data?company=' + encodeURIComponent(company), true);
+        xhr.open('GET', 'http://localhost:5009/get_glassdoor_data?company=' + encodeURIComponent(company), true);
         xhr.onload = function () {
             //It suceeded
             if (xhr.status === 200) {

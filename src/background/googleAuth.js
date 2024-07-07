@@ -16,8 +16,7 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const bcrypt = require('bcryptjs');
 
 passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    clientSecret: process.env.GOOGLE_API_KEY,
     //placeholder url
     callbackURL: 'http://localhost:3000/auth/google/callback'
 }, (token, tokenSecret, profile, done) => {
@@ -54,7 +53,7 @@ passport.use(new GoogleStrategy({
             return done(null, newUser)
         })
         .catch((error) => {
-            console.log("Recieved error of " + error + " trying to add job after google auth, no user added");
+            console.log("Recieved error of " + error + " trying to add user after google auth, no user added");
             return done(error, null)
         })
     })

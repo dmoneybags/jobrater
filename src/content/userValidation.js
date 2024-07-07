@@ -38,8 +38,13 @@ const getStrengthValues = (password) => {
     const specialCharactersPattern = /[!@#$%^&*(),.?":{}|<>]/;
     const capsCharactersPattern = /[A-Z]/;
     returnValues[0] = specialCharactersPattern.test(password);
+    console.log(typeof password);
+    console.log("passwordLength: " + password.length);
     returnValues[1] = password.length >= MINIMUMPASSWORDLENGTH;
     returnValues[2] = capsCharactersPattern.test(capsCharactersPattern);
+    console.log("PASSWORD CONTAINS SPECIAL CHARACTER: " + returnValues[0] + 
+        ", PASSWORD is long enough: " + returnValues[1] + 
+        ", PASSWORD HAS CAPS " + returnValues[2]);
     return returnValues;
 }
 //execution flow:
@@ -62,7 +67,7 @@ const validateUserDataObject = (userDataObject, retypedPassword) => {
             code: 1
         }
     }
-    if (getStrengthValues(userDataObject).includes(false)){
+    if (getStrengthValues(userDataObject.password).includes(false)){
         return {
             isValid: false,
             message: "weak password",

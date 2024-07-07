@@ -34,12 +34,12 @@ Glassdoor will block our requests sometimes and throw a captcha or however you s
 import os
 from enum import Enum
 import asyncio
-import brotli
 import json
 import os
 import re
 import httpx
 from bs4 import BeautifulSoup
+import brotli
 from html import escape
 from typing import Dict, List, Optional, Tuple, TypedDict
 from urllib.parse import urljoin
@@ -128,16 +128,18 @@ async def find_companies(query: str, session: httpx.AsyncClient) -> List[FoundCo
     print("URL: " + f"https://www.glassdoor.com/searchsuggest/typeahead?numSuggestions=8&source=GD_V2&version=NEW&rf=full&fallback=token&input={query}")
     # Set a realistic timeout
     timeout = httpx.Timeout(10.0, connect=5.0)
+    url = f"https://www.glassdoor.com/searchsuggest/typeahead?numSuggestions=8&source=GD_V2&version=NEW&rf=full&fallback=token&input={query}"
+    print("URL: "+ url)
     result = session.get(
-        f"https://www.glassdoor.com/searchsuggest/typeahead?numSuggestions=8&source=GD_V2&version=NEW&rf=full&fallback=token&input={query}",
+        url,
         timeout=timeout
     )
     try:
         data = result.json()
-    except:
+    except Exception as e:
         print("DATA CONVERSION FAILED FOR: " + result.text)
         print(f"HEADERS: {result.headers}")
-        print(brotli.decompress(result.content))
+        raise e
     companies = []
     for result in data:
         if result["category"] == "company":

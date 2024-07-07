@@ -16,7 +16,7 @@ import requests
 
 app = Flask(__name__)
 
-GOOGLE_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 @app.route('/google_places/address', methods=['GET'])
 def get_company_address():

@@ -27,13 +27,14 @@
                 "src/content/glassdoorScraperCalls.js",
                 "src/content/databaseCalls.js",
                 "src/content/userValidation.js",
-                "src/content/googleAuth.js"
+                "src/content/auth.js",
+                "src/content/tests/testLogin.jsx"
             ]
         }
     ],
     "action": {
         "default_title": "Job Rater",
-        "default_popup": "public/popup.html"
+        "default_popup": "dist/popup.html"
     },
     "manifest_version": 3
 }

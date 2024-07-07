@@ -17,6 +17,11 @@ Calls:
 database_server.py
 Listens for: requests sent on PORT 5001
 Executes the database functions to CRUD jobs
+
+TO DO:
+
+load function, can be called when a user loads the app to grab all their data if not
+initialized
 '''
 
 from flask import Flask, abort

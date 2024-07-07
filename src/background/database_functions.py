@@ -31,6 +31,10 @@ Through routines in
 \/
 \/
 database_functions.py
+
+TO DO:
+
+make sure that when we check if the company exists all the values arent null
 '''
 
 import mysql.connector
@@ -236,7 +240,7 @@ class DatabaseFunctions:
         cursor.execute(query, (company_name,))
         result = cursor.fetchone()
         print(result)
-        if not result:
+        if not result or None in result:
             return None
         # Map column names to values
         result_dict = OrderedDict(zip(COMPANY_COLUMNS, result))
@@ -403,12 +407,13 @@ class DatabaseFunctions:
         return json.dumps(result_dict, cls=DecimalEncoder)
     #Adds a user upon the server recieving the json
     def add_user(user_json):
+        user_json["UserID"] = str(uuid.uuid1())
         cursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
         #Switch to our jobDb
         cursor.execute("USE JOBDB")
-        query = DatabaseFunctions.get_job_add_query(user_json)
-        cursor.execute(query, (user_json.values()))
+        query = DatabaseFunctions.get_add_user_query(user_json)
+        cursor.execute(query, (list(user_json.values())))
         print("USER SUCCESSFULLY ADDED")
         DatabaseFunctions.MYDB.commit()
         return 'success', 200

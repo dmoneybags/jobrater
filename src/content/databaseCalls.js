@@ -62,6 +62,7 @@ const sendMessageToAddJob = (jobJson) => {
                 //change it to json
                 var response = xhr.responseText;
                 console.log("Add Job Request Suceeded");
+                resolve(response);
             } else {
                 //Didnt get a sucessful message
                 console.error('Request failed. Status:', xhr.status);
@@ -144,5 +145,30 @@ const getUserByGoogleId = (googleId) => {
     });
 }
 const sendMessageToAddUser = (userJson) => {
-    
+    //create a promise to resolve it asynchronously
+    return new Promise((resolve, reject) => {
+        //Our database program runs on port 5001 on our local server
+        var xhr = new XMLHttpRequest();
+        //call an http request
+        xhr.open('POST', 'http://localhost:5001/databases/user=' + encodeURIComponent(JSON.stringify(userJson)), true);
+        xhr.onload = function () {
+            //It suceeded
+            if (xhr.status === 200) {
+                //change it to json
+                var response = xhr.responseText;
+                resolve(response)
+            } else {
+                //Didnt get a sucessful message
+                console.error('Request failed. Status:', xhr.status);
+                reject(xhr.status);
+            }
+        };
+        //Couldnt load the http request
+        xhr.onerror = function () {
+            console.error('Request failed. Network error');
+            reject(xhr.statusText);
+        };
+        //send our response
+        xhr.send();
+    });
 }
