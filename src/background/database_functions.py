@@ -36,6 +36,7 @@ TO DO:
 
 make sure that when we check if the company exists all the values arent null
 '''
+#TO DO, we should not just leave cursor open
 
 import mysql.connector
 import json
@@ -88,12 +89,26 @@ class DatabaseFunctions:
         with open(f, "r") as sqlFile:
             cursor.execute(sqlFile.read(), multi=True)
         DatabaseFunctions.MYDB.commit()
+    #returns a list of string column names when given a str table name
+    def get_columns_from_table(table):
+        cursor = DatabaseFunctions.MYDB.cursor()
+        DatabaseFunctions.MYDB.reconnect()
+        cursor.execute("USE JOBDB")
+        query = f"SELECT * FROM {table} LIMIT 1;"
+        cursor.execute(query)
+        #consume our unused query
+        _ = cursor.fetchall()
+        columns = cursor.column_names
+        #func to turn strings lowercase
+        first_letter_lower = lambda s: s[:1].lower() + s[1:] if s else ''
+        columns = [first_letter_lower(c) for c in columns]
+        return columns
     #Takes in the job json and returns the list of strings that the sql command
     #expect
     def get_job_dict(job_json, keyword_ID):
         #Generate a list of 0s as placeholders
         zero_filled_job_data = {}
-        for col in JOB_COLUMNS:
+        for col in DatabaseFunctions.get_columns_from_table("job"):
             #Our job data doesn't come with a KeywordID, we generate it on the backend
             if col == "KeywordID":
                 zero_filled_job_data[col] = keyword_ID
@@ -119,7 +134,7 @@ class DatabaseFunctions:
     #to get the json dictionary to represent the values for the add
     def get_company_dict(job_json):
         zero_filled_company_data = {}
-        for col in COMPANY_COLUMNS:
+        for col in DatabaseFunctions.get_columns_from_table("company"):
             try:
                 val = str(job_json[col])
                 zero_filled_company_data[col] = 0 if val == '' else val
@@ -248,6 +263,7 @@ class DatabaseFunctions:
         cursor.execute(company_add_Str, list(company_values.values()))
         print("COMPANY SUCCESSFULLY ADDED")
         DatabaseFunctions.MYDB.commit()
+        cursor.close()
         return 'success', 200
     #Read company
     def read_company_by_id(company_name):
@@ -261,7 +277,8 @@ class DatabaseFunctions:
         if not result or None in result:
             return None
         # Map column names to values
-        result_dict = OrderedDict(zip(COMPANY_COLUMNS, result))
+        result_dict = OrderedDict(zip(DatabaseFunctions.get_columns_from_table("company"), result))
+        cursor.close()
         return json.dumps(result_dict, cls=DecimalEncoder)
     #Update company
     def update_company(job_json):
@@ -280,6 +297,7 @@ class DatabaseFunctions:
         #Execute the query
         cursor.execute(update, params)
         DatabaseFunctions.MYDB.commit()
+        cursor.close()
         #return success
         return 'success', 200
     #Delete company
@@ -292,6 +310,7 @@ class DatabaseFunctions:
         #Run the sql to delete the job
         cursor.execute(query, (company,))
         DatabaseFunctions.MYDB.commit()
+        cursor.close()
         return 'success', 200
     #Create keywords
     def add_keywords(job_json, keyword_uuid_str):
@@ -304,6 +323,7 @@ class DatabaseFunctions:
         cursor.execute(keyword_add_str, keywordValues)
         print("KEYWORDS SUCCESSFULLY ADDED")
         DatabaseFunctions.MYDB.commit()
+        cursor.close()
     #Create job
     def add_job(job_json, user_id):
         job_id = job_json["jobId"]
@@ -328,6 +348,7 @@ class DatabaseFunctions:
         print("JOB SUCCESSFULLY ADDED")
         DatabaseFunctions.add_user_job(user_id, job_id)
         DatabaseFunctions.MYDB.commit()
+        cursor.close()
         return 'success', 200
     #Read most recent job
     #Mostly for test code, in reality index.html will work by grabbing an event of the most recent id
@@ -347,7 +368,8 @@ class DatabaseFunctions:
         if not result:
             return None
         # Map column names to values
-        result_dict = OrderedDict(zip(JOB_COLUMNS, result))
+        result_dict = OrderedDict(zip(DatabaseFunctions.get_columns_from_table("job"), result))
+        cursor.close()
         return json.dumps(result_dict, cls=DecimalEncoder)
     #Grabs job by id
     def read_job_by_id(job_id):
@@ -362,9 +384,10 @@ class DatabaseFunctions:
         if not result:
             return None
         # Map column names to values
-        result_dict = OrderedDict(zip(JOB_COLUMNS, result))
+        result_dict = OrderedDict(zip(DatabaseFunctions.get_columns_from_table("job"), result))
         response_str = json.dumps(result_dict, cls=DecimalEncoder)
         print("Read job with id " + job_id + " of " + response_str)
+        cursor.close()
         return response_str
     #Update Job
     #TO DO: Add support for updating keywords
@@ -383,6 +406,7 @@ class DatabaseFunctions:
         #Execute the query
         cursor.execute(update, params)
         DatabaseFunctions.MYDB.commit()
+        cursor.close()
         #return success
         return 'success', 200
     #Delete Job
@@ -396,6 +420,7 @@ class DatabaseFunctions:
         #Run the sql to delete the job
         cursor.execute(query, (job_id,))
         DatabaseFunctions.MYDB.commit()
+        cursor.close()
         return 'success', 200
     #Read User using the email as primary key
     #Takes an arg of the string email
@@ -411,7 +436,8 @@ class DatabaseFunctions:
         print(result)
         if not result:
             return None
-        result_dict = OrderedDict(zip(USER_COLUMNS, result))
+        result_dict = OrderedDict(zip(DatabaseFunctions.get_columns_from_table("user"), result))
+        cursor.close()
         return json.dumps(result_dict, cls=DecimalEncoder)
     #Read User using the email as primary key
     #Takes an arg of the string email
@@ -425,7 +451,8 @@ class DatabaseFunctions:
         result = cursor.fetchone()
         if not result:
             return None
-        result_dict = OrderedDict(zip(USER_COLUMNS, result))
+        result_dict = OrderedDict(zip(DatabaseFunctions.get_columns_from_table("user"), result))
+        cursor.close()
         return json.dumps(result_dict, cls=DecimalEncoder)
     #Adds a user upon the server recieving the json
     def add_user(user_json, salt):
@@ -441,6 +468,7 @@ class DatabaseFunctions:
         cursor.execute(query, params)
         print("USER SUCCESSFULLY ADDED")
         DatabaseFunctions.MYDB.commit()
+        cursor.close()
         return 'success', 200
     def delete_user(email):
         cursor = DatabaseFunctions.MYDB.cursor()
@@ -451,6 +479,7 @@ class DatabaseFunctions:
         cursor.execute(query, (email,))
         print("USER SUCCESSFULLY ADDED")
         DatabaseFunctions.MYDB.commit()
+        cursor.close()
         return 'success', 200
     def add_user_job(user_id, job_id):
         print("ADDING USER JOB WITH USER ID " + user_id + " AND JOB ID OF " + job_id)
@@ -466,6 +495,7 @@ class DatabaseFunctions:
         cursor.execute(query, (user_job_id, user_id, job_id))
         print("USER JOB SUCCESSFULLY ADDED")
         DatabaseFunctions.MYDB.commit()
+        cursor.close()
         return 'success', 200
     def delete_user_job(user_id, job_id):
         cursor = DatabaseFunctions.MYDB.cursor()
@@ -477,6 +507,7 @@ class DatabaseFunctions:
         cursor.execute(query, (user_job_id,))
         print("USER JOB SUCCESSFULLY DELETED")
         DatabaseFunctions.MYDB.commit()
+        cursor.close()
         return 'success', 200
     def get_user_jobs(user_id):
         cursor = DatabaseFunctions.MYDB.cursor()
@@ -488,6 +519,9 @@ class DatabaseFunctions:
         results = cursor.fetchall()
         results_list = []
         for result in results:
-            result_dict = OrderedDict(zip(JOB_COLUMNS, result))
+            result_dict = OrderedDict(zip(DatabaseFunctions.get_columns_from_table("job"), result))
             results_list.append(result_dict)
-        return results
+        cursor.close()
+        return json.dumps(results_list, cls=DecimalEncoder)
+
+#TO DO: CURSOR CLOSE IT AT THE END

@@ -101,12 +101,38 @@ def job_tests(user_id):
     DatabaseFunctions.delete_job(job_data["jobId"])
     assert(DatabaseFunctions.read_company_by_id("Apple") is not None)
     print("COMPANY LOGIC SUCEEDED")
-    DatabaseFunctions.add_job(job_data, user_id)
     print("READDING JOB SUCEEDED")
+def user_job_tests(user_id):
+    print("BEGINNNING USER JOB TESTS")
+    print("TESTING READING BACK USER JOBS AFTER ADDING")
+    job_strs = ["Application Programmer", "Janitor", "CSM (In person ONLY!)", "Professional Dookier (SENIOR LEVEL)"]
+    job_id = ["1835781350", "3252359832", "2335285392", "3295295725"]
+    for i in range(len(job_strs)):
+        job_data_copy = job_data
+        job_data_copy["job"] = job_strs[i]
+        job_data_copy["jobId"] = job_id[i]
+        print("TEST JOB BEING ADDED WITH NAME " + job_strs[i])
+        DatabaseFunctions.add_job(job_data_copy, user_id)
+    results = json.loads(DatabaseFunctions.get_user_jobs(user_id))
+    print(results)
+    assert(len(results) == len(job_strs))
+    for result in results:
+        #make sure the title is in our list
+        assert(job_strs.count(result["job"]) == 1)
+    print("USER JOBS SUCCESSFULLy READ")
+    #test that deleting the job deletes the user job
+    #double adds
+    #test that deleting the user job does NOT delete the job
+
+
+
+    
+    
 if __name__ == "__main__":
     user_id = user_tests()
     company_tests()
     job_tests(user_id)
+    user_job_tests(user_id)
 
 
     
