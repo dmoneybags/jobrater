@@ -78,19 +78,20 @@ const sendMessageToAddJob = (jobJson) => {
         xhr.send();
     });
 };
-const getUserWithEmail = (email) => {
+const getUserData = () => {
     //create a promise to resolve it asynchronously
     return new Promise((resolve, reject) => {
         //Our database program runs on port 5001 on our local server
         var xhr = new XMLHttpRequest();
         //call an http request
-        xhr.open('POST', 'http://localhost:5001/databases/get_user_by_email?email=' + encodeURIComponent(email), true);
+        //No args, uses the users token
+        xhr.open('POST', 'http://localhost:5001/databases/get_user_data', true);
         xhr.onload = function () {
             //It suceeded
             if (xhr.status === 200) {
                 //change it to json
                 var response = xhr.responseText;
-                console.log("Read user with the email of " + email);
+                console.log("Read user data of " + response);
                 resolve(JSON.parse(response));
             } else if (xhr.status === 404){
                 //We didnt find the user in the db
@@ -157,6 +158,37 @@ const sendMessageToAddUser = (userJson) => {
                 //change it to json
                 var response = xhr.responseText;
                 resolve(response)
+            } else {
+                //Didnt get a sucessful message
+                console.error('Request failed. Status:', xhr.status);
+                reject(xhr.status);
+            }
+        };
+        //Couldnt load the http request
+        xhr.onerror = function () {
+            console.error('Request failed. Network error');
+            reject(xhr.statusText);
+        };
+        //send our response
+        xhr.send();
+    });
+}
+const sendMessageToDeleteUser = (user) => {
+    //create a promise to resolve it asynchronously
+    return new Promise((resolve, reject) => {
+        //Our python program runs on port 5007 on our local server
+        var xhr = new XMLHttpRequest();
+        //call an http request
+        //we do NOT add any args, the token tells it which user to delete
+        xhr.open('POST', 'http://localhost:5007/delete_user', true);
+        xhr.onload = function () {
+            //It suceeded
+            if (xhr.status === 200) {
+                //change it to json
+                var response = JSON.parse(xhr.responseText);
+                console.log(response)
+                //resolve the token
+                resolve(response);
             } else {
                 //Didnt get a sucessful message
                 console.error('Request failed. Status:', xhr.status);

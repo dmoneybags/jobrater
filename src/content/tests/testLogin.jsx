@@ -1,37 +1,39 @@
 import React, { createElement } from 'react';
 import ReactDOM from 'react-dom';
+import {genSaltSync, hashSync} from 'bcryptjs';
+import {createUser} from '../users';
 
 const testTryRegister = (event) => {
     event.preventDefault();
+    let salt = genSaltSync();
+    let password = document.getElementById("registerPassword").value;
     //random data for cryptography
     //to do: key exchange or store salt in db
-    var salt = bcrypt.genSaltSync(10);
     const email = document.getElementById("registerEmail").value;
-    const password = bcrypt.hashSync(document.getElementById("registerPassword").value, salt);;
+    //we do this here as soon as possible for password safety
     const name = document.getElementById("registerName").value;
     const confirmPassword = document.getElementById("registerConfirmPassword").value;
-    const user = {
-        "email": email,
-        "password": password,
-        "name": name
-    }
+    //create user returns the proper user json structure with null filled values
+    const user = createUser({email: email, name: name, password: password})
     const validationData = validateUserDataObject(user, confirmPassword);
     if (!validationData.isValid){
         alert("INVALID REGISTRATION DATA " + validationData.message);
         return;
     }
-    register(user);
+    user.password = hashSync(user.password, salt);
+    //We must pass the salt because it needs to be stored in our db
+    register(user, salt);
 }
 const testTryLogin = (event) => {
     event.preventDefault();
-    const email = document.getElementById("registerEmail").value;
-    const password = document.getElementById("registerPassword").value;
-    const user = {
-        "email": email,
-        //TO DO encrypt password
-        "password": password
-    }
-    login(user);
+    const emailValue = document.getElementById("loginEmail").value;
+    getSalt(emailValue)
+    .then((salt) => {
+        const passwordValue = document.getElementById("loginPassword").value;
+        const hashedPW = hashSync(passwordValue, salt);
+        const user = createUser({email: emailValue, password: hashedPW})
+        login(user);
+    })
 }
 
 export function RegisterForm() {

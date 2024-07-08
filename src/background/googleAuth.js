@@ -13,7 +13,6 @@ leads here if the user chooses to sign up with google
 //SERVER SIDE CODE
 
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const bcrypt = require('bcryptjs');
 
 passport.use(new GoogleStrategy({
     clientSecret: process.env.GOOGLE_API_KEY,
@@ -25,13 +24,14 @@ passport.use(new GoogleStrategy({
         if (userJson){
             return done(null, userJson);
         }
-        newUser = {
+        const newUserArgs = {
             google_id: profile.id,
             name: profile.displayName,
             email: profile.emails[0].value,
             password: null
-        }
-        sendMessageToAddUser(newUser)
+        };
+        const user = createUser(newUserArgs);
+        register(newUser, 0)
         .then(() => {
             return done(null, newUser)
         })
@@ -42,13 +42,14 @@ passport.use(new GoogleStrategy({
     })
     .catch((error) => {
         console.log("Recieved error of " + error + " trying to read the db for google id of " + profile.id);
-        newUser = {
+        const newUserArgs = {
             google_id: profile.id,
             name: profile.displayName,
             email: profile.emails[0].value,
             password: null
-        }
-        sendMessageToAddUser(newUser)
+        };
+        const user = createUser(newUserArgs);
+        register(newUser, 0)
         .then(() => {
             return done(null, newUser)
         })
