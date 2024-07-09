@@ -121,13 +121,24 @@ def user_job_tests(user_id):
         assert(job_strs.count(result["job"]) == 1)
     print("USER JOBS SUCCESSFULLy READ")
     #test that deleting the job deletes the user job
+    print("TESTING DELETING JOB AND READING USER JOB")
+    DatabaseFunctions.delete_job(job_id[2])
+    results = json.loads(DatabaseFunctions.get_user_jobs(user_id))
+    for result in results:
+        assert(result["jobId"] != job_id[2])
+    print("USER JOB SUCCESSFULLY DELETED")
     #double adds
+    print("ATTEMPTING TO DOUBLE ADD A USER JOB")
+    job_data_copy = job_data
+    job_data_copy["jobId"] = job_id[0]
+    DatabaseFunctions.add_job(job_data_copy, user_id)
     #test that deleting the user job does NOT delete the job
+    print("TESTING THAT JOB PERSISTS WHEN USER JOB IS DELETED")
+    DatabaseFunctions.delete_user_job(user_id, job_id[0])
+    job = json.loads(DatabaseFunctions.read_job_by_id(job_id[0]))
+    assert(job["company"] == "Apple")
+    print("JOB PERSISTS")
 
-
-
-    
-    
 if __name__ == "__main__":
     user_id = user_tests()
     company_tests()

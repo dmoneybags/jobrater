@@ -173,6 +173,7 @@ const register = (user, salt) => {
             })
             .catch((error) => {
                 console.log("FAILED TO REGISTER USER WITH ERROR: " + error)
+                reject(error);
             })
     })
 }

@@ -330,6 +330,8 @@ class DatabaseFunctions:
         #The job is already in our db
         #Prevents duplicate keywords
         if (DatabaseFunctions.read_job_by_id(job_id)):
+            #we still need to add it to the user db
+            DatabaseFunctions.add_user_job(user_id, job_id)
             return 'success', 200
         #Generate a uuid for our keyword db
         keyword_uuid_str = str(uuid.uuid1())
@@ -346,6 +348,7 @@ class DatabaseFunctions:
         cursor.execute(job_add_str, list(job_values.values()))
         DatabaseFunctions.MYDB.commit()
         print("JOB SUCCESSFULLY ADDED")
+        #add the job to the users db
         DatabaseFunctions.add_user_job(user_id, job_id)
         DatabaseFunctions.MYDB.commit()
         cursor.close()
@@ -456,7 +459,7 @@ class DatabaseFunctions:
         return json.dumps(result_dict, cls=DecimalEncoder)
     #Adds a user upon the server recieving the json
     def add_user(user_json, salt):
-        user_json["UserID"] = str(uuid.uuid1())
+        user_json["userId"] = str(uuid.uuid1())
         cursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
         #Switch to our jobDb
@@ -492,7 +495,11 @@ class DatabaseFunctions:
         #Just ensures that we have a unique combo of userIds to jobIds, no duplicants
         #Client will check this as well for less eronious calls
         user_job_id = str(hash(user_id + job_id))
-        cursor.execute(query, (user_job_id, user_id, job_id))
+        try:
+            cursor.execute(query, (user_job_id, user_id, job_id))
+        except mysql.connector.errors.IntegrityError:
+            print("USER JOB ALREADY IN DB")
+            return 'duplicate', 200
         print("USER JOB SUCCESSFULLY ADDED")
         DatabaseFunctions.MYDB.commit()
         cursor.close()
