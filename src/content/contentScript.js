@@ -27,7 +27,6 @@ Sends: a message for db to handle the job
 //Payments
 //deployment
 TEST = true;
-FIRSTJOB = true;
 (() => {
     //No job is loaded yet
     let currentJob = "";
@@ -39,15 +38,7 @@ FIRSTJOB = true;
         if (type === "NEW") {
             currentJob = jobId;
             console.log(jobId);
-            //Wait a bit of time on the first one
-            if (FIRSTJOB){
-                setTimeout(() => {
-                    newJobLoaded(jobId);
-                    FIRSTJOB = false;
-                }, 2000)
-            } else {
-                newJobLoaded(jobId)
-            }
+            newJobLoaded(jobId);
         }
     });
 
@@ -314,30 +305,19 @@ FIRSTJOB = true;
             console.error("-------- COULDNT COMPLETE COMPANY INFO --------");
         });
     }
-    const waitForDocumentLoaded = () => {
-        return new Promise((resolve) => {
-            if (document.readyState === 'complete' || document.readyState === 'interactive') {
-                resolve();
-            } else {
-                document.addEventListener('DOMContentLoaded', resolve);
-            }
-        });
-    }
     //Called every single time a new job is loaded. Grabs information on the job and sets it in the DB. 
     //View will then render the db.
     const newJobLoaded = (jobId) => {
-        waitForDocumentLoaded().then(() => {
-            console.log("New Job Loaded");
-            //Grabs the data directly from the linkedin website
-            var jobDataJson = scrapeJobInfo();
-            //Store the job ID as a UUID for our db
-            jobDataJson["jobId"] = jobId;
-            //Grabs the info from our python program which scrapes the glassdoor website.
-            scrapeCompanyInfoIfNeeded(jobDataJson)
-            .then((jobDataJson) => {
-                sendMessageToAddJob(jobDataJson)
-            })
-        });
+        console.log("New Job Loaded");
+        //Grabs the data directly from the linkedin website
+        var jobDataJson = scrapeJobInfo();
+        //Store the job ID as a UUID for our db
+        jobDataJson["jobId"] = jobId;
+        //Grabs the info from our python program which scrapes the glassdoor website.
+        scrapeCompanyInfoIfNeeded(jobDataJson)
+        .then((jobDataJson) => {
+            sendMessageToAddJob(jobDataJson)
+        })
     }
     newJobLoaded();
 })();

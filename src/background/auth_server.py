@@ -37,7 +37,11 @@ def decode_user_from_token(token):
         print(payload)
         # Extract user information
         user_email = payload.get("email")
-        user_info = json.loads(DatabaseFunctions.read_user_by_email(user_email))
+        user_json_str = DatabaseFunctions.read_user_by_email(user_email)
+        if not user_json_str:
+            print("User not in db")
+            return None
+        user_info = json.loads(user_json_str)
         
         return user_info
     except jwt.ExpiredSignatureError:

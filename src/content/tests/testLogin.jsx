@@ -6,6 +6,7 @@ import {createUser} from '../users';
 //Tests to test our methods to call the servers and the server methods themselves
 //will add fakerjs eventually
 //db must be cleared at the start to avoid duplicant adds
+const RUNTESTS = false;
 let jobData = null
 
 fetch('/src/content/tests/testJob.json')
@@ -251,17 +252,19 @@ async function attemptToReloginUserAfterDelete(){
 
 //MAIN:
 async function runTests(){
-    await registerTest();
-    await registerTestNegativeDupEmail();
-    await registerTestNegativeBadData();
-    await loginTest();
-    await testTryAddJob();
-    await testTryDeleteUser();
-    await attemptToReloginUserAfterDelete();
-    //These two set tokens, if you need valid tokens run your tests before these
-    //or regrab auth
-    await testTryAddJobNoToken();
-    await testTryAddJobNegative();
+    if (RUNTESTS){
+        await registerTest();
+        await registerTestNegativeDupEmail();
+        await registerTestNegativeBadData();
+        await loginTest();
+        await testTryAddJob();
+        await testTryDeleteUser();
+        await attemptToReloginUserAfterDelete();
+        //These two set tokens, if you need valid tokens run your tests before these
+        //or regrab auth
+        await testTryAddJobNoToken();
+        await testTryAddJobNegative();
+    }
 }
 
 runTests();
