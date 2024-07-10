@@ -12,7 +12,7 @@ auth_server.py
 
 import bcrypt
 from flask_bcrypt import Bcrypt
-import database_functions
+from database_functions import DatabaseFunctions 
 import datetime
 import json
 from flask import Flask, request, jsonify, abort
@@ -30,12 +30,14 @@ SECRET_KEY = os.environ["secret_key"]
 
 #write this
 def decode_user_from_token(token):
+    print("DECODING TOKEN OF: " + token)
     try:
         # Decode the JWT
         payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-        
+        print(payload)
         # Extract user information
-        user_info = payload.get("user")
+        user_email = payload.get("email")
+        user_info = json.loads(DatabaseFunctions.read_user_by_email(user_email))
         
         return user_info
     except jwt.ExpiredSignatureError:
@@ -47,9 +49,10 @@ def decode_user_from_token(token):
         print("Invalid token")
         return None
 def get_token(user, num_hours=1):
+    exp_time = datetime.datetime.utcnow() + datetime.timedelta(hours=num_hours)
     return jwt.encode({
         'email': user['email'],
-        'exp': datetime.datetime.now() + datetime.timedelta(hours=num_hours)
+        'exp': int(exp_time.timestamp())
     }, SECRET_KEY, algorithm="HS256")
 
 @app.route('/auth/google', methods=['POST'])
@@ -79,9 +82,8 @@ def token_required(f):
             return jsonify({'message': 'Token is missing!'}), 401
 
         try:
-            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
-            user = data.get("user")
-            current_user = database_functions.DatabaseFunctions.read_user_by_email(user["email"])
+            user = decode_user_from_token(token)
+            current_user = DatabaseFunctions.read_user_by_email(user["email"])
             if not current_user:
                 return jsonify({'message': 'User not found!'}), 401
         except jwt.ExpiredSignatureError:
@@ -104,7 +106,7 @@ def get_salt_by_email():
         print("Request of: " + request + " is invalid")
         #Invalid request
         return abort(403)
-    result_str = database_functions.DatabaseFunctions.read_user_by_email(email)
+    result_str = DatabaseFunctions.read_user_by_email(email)
     if not result_str:
         abort(404)
     result = json.loads(result_str)
@@ -115,7 +117,7 @@ def login():
     email = request.args.get('email', default="NO EMAIL LOADED", type=str)
     password_hash = request.args.get('password', default="NO PASSWORD LOADED", type=str)
 
-    user_str = database_functions.DatabaseFunctions.read_user_by_email(email)
+    user_str = DatabaseFunctions.read_user_by_email(email)
     user = json.loads(user_str)
     print("ATTEMPTING TO LOGIN USER: " + json.dumps(user))
     #PASSWORDS ARE SALTED AND HASHED! do not be scared...
@@ -125,11 +127,12 @@ def login():
         print("Passwords don't match")
         return jsonify({'message': 'Invalid email or password!'}), 401
     
-    token = get_token()
+    token = get_token(user)
 
-    user = database_functions.DatabaseFunctions.read_user_by_email(user["email"])
-    response = jsonify({'token': token, 'user': json.dumps(user)})
-    print("LOGGED IN USER RETURNING RESPONSE: " + json.dumps({'token': token, 'user': json.dumps(user)}))
+    user = DatabaseFunctions.read_user_by_email(user["email"])
+    response = jsonify({'token': token, 'user': json.loads(user)})
+    print("LOGGED IN USER RETURNING RESPONSE: ")
+    print(response)
     return response
 @app.route('/register', methods=['POST'])
 def register():
@@ -137,12 +140,12 @@ def register():
     salt = request.args.get('salt', default="NO SALT LOADED", type=str)
     user = json.loads(user_str)
     print(user)
-    if database_functions.DatabaseFunctions.read_user_by_email(user['email']):
+    if DatabaseFunctions.read_user_by_email(user['email']):
         return jsonify({'message': 'User already exists!'}), 401
-    database_functions.DatabaseFunctions.add_user(user, salt)
+    response = DatabaseFunctions.add_user(user, salt)
 
-    token = get_token()
+    token = get_token(user)
 
-    return jsonify({'token': token})
+    return jsonify({'token': token, 'userId': response[0]})
 if __name__ == '__main__':
     app.run(debug=True, port=5007)

@@ -105,7 +105,7 @@ const sendRegisterMsg = (user, salt) => {
                 var response = JSON.parse(xhr.responseText);
                 console.log(response)
                 //resolve the token
-                resolve(response["token"]);
+                resolve(response);
             } else {
                 //Didnt get a sucessful message
                 console.error('Request failed. Status:', xhr.status);
@@ -166,10 +166,11 @@ const sendLoginMsg = (user) => {
 const register = (user, salt) => {
     return new Promise((resolve, reject) => {
         sendRegisterMsg(user, salt)
-            .then((token) => {
-                setToken(token)
-                setActiveUser(user)
-                resolve("Success")
+            .then((response) => {
+                setToken(response.token);
+                user.userId = response.userId;
+                setActiveUser(user);
+                resolve("Success");
             })
             .catch((error) => {
                 console.log("FAILED TO REGISTER USER WITH ERROR: " + error)
@@ -188,7 +189,7 @@ const login = (user) => {
                 console.log(response);
                 setToken(response.token)
                 //User is a string from the response
-                setActiveUser(JSON.parse(response.user))
+                setActiveUser(response.user)
                 resolve("Success")
             })
     })

@@ -180,12 +180,12 @@ const sendMessageToDeleteUser = (user) => {
         var xhr = new XMLHttpRequest();
         //call an http request
         //we do NOT add any args, the token tells it which user to delete
-        xhr.open('POST', 'http://localhost:5007/delete_user', true);
+        xhr.open('POST', 'http://localhost:5001/databases/delete_user', true);
         xhr.onload = function () {
             //It suceeded
             if (xhr.status === 200) {
                 //change it to json
-                var response = JSON.parse(xhr.responseText);
+                var response = xhr.responseText;
                 console.log(response)
                 //resolve the token
                 resolve(response);

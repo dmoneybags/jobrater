@@ -27,8 +27,7 @@
                 "src/content/glassdoorScraperCalls.js",
                 "src/content/databaseCalls.js",
                 "src/content/userValidation.js",
-                "src/content/auth.js",
-                "src/content/tests/testLogin.jsx"
+                "src/content/auth.js"
             ]
         }
     ],

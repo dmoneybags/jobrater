@@ -68,7 +68,7 @@ class DatabaseServer:
         try:
             #THIS ADDS THE JOB AND COMPANY AND KEYWORDS EACH TO THEIR
             #INDIVIDUAL TABLES
-            response_code = DatabaseFunctions.add_job(jobJson)
+            response_code = DatabaseFunctions.add_job(jobJson, userId)
             return response_code
         except IntegrityError:
             #its honestly ok if we try to read the same job a lot
@@ -152,11 +152,14 @@ class DatabaseServer:
     #TO DO: ADD RETURNING JOBS
     def get_user_data():
         token = request.headers.get('Authorization')
-        email = decode_user_from_token(token)["email"]
-        user = DatabaseFunctions.read_user_by_email(email)
+        if not token:
+            return 'No token recieved', 401
+        user = decode_user_from_token(token)
+        if not user:
+            return 'Invalid Token', 401
         if not user:
             abort(404)
-        jobs = DatabaseFunctions.get_user_jobs()
+        jobs = DatabaseFunctions.get_user_jobs(user["userId"])
         return jsonify({"user": user, "jobs": jobs})
     @app.route('/databases/get_user_by_googleId', methods=["GET"])
     def get_user_by_googleId():
@@ -173,7 +176,12 @@ class DatabaseServer:
     @app.route('/databases/delete_user', methods=['POST'])
     def delete_user():
         token = request.headers.get('Authorization')
-        user_email = decode_user_from_token(token)["email"]
+        if not token:
+            return 'No token recieved', 401
+        user = decode_user_from_token(token)
+        if not user:
+            return 'Invalid Token', 401
+        user_email = user["email"]
         if not DatabaseFunctions.read_user_by_email(user_email):
             return jsonify({'message': 'User not in db'}), 401
         return DatabaseFunctions.delete_user(user_email)

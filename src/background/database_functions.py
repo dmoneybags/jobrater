@@ -59,7 +59,7 @@ COMPANY_COLUMNS = ["company", "businessOutlookRating", "careerOpportunitiesRatin
                 "overallRating", "seniorManagementRating", "workLifeBalanceRating"]
 #The columns in our user db
 #very basic colums for testing, moving forward we will have more advanced data
-USER_COLUMNS = ["userID", "email", "password", "google_Id", "name", "location","salt"]
+USER_COLUMNS = ["userId", "email", "password", "google_Id", "name", "location","salt"]
 #a custom json decoder, needed because our items in our DB are stored as Decimals
 #and datetimes
 class DecimalEncoder(json.JSONEncoder):
@@ -427,6 +427,7 @@ class DatabaseFunctions:
         return 'success', 200
     #Read User using the email as primary key
     #Takes an arg of the string email
+    #Returns a string for responses should probably be changed tbh
     def read_user_by_email(email):
         cursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
@@ -459,7 +460,8 @@ class DatabaseFunctions:
         return json.dumps(result_dict, cls=DecimalEncoder)
     #Adds a user upon the server recieving the json
     def add_user(user_json, salt):
-        user_json["userId"] = str(uuid.uuid1())
+        userId = str(uuid.uuid1())
+        user_json["userId"] = userId
         cursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
         #Switch to our jobDb
@@ -472,7 +474,7 @@ class DatabaseFunctions:
         print("USER SUCCESSFULLY ADDED")
         DatabaseFunctions.MYDB.commit()
         cursor.close()
-        return 'success', 200
+        return userId, 200
     def delete_user(email):
         cursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()

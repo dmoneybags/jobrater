@@ -38,7 +38,6 @@ const getStrengthValues = (password) => {
     const specialCharactersPattern = /[!@#$%^&*(),.?":{}|<>]/;
     const capsCharactersPattern = /[A-Z]/;
     returnValues[0] = specialCharactersPattern.test(password);
-    console.log(typeof password);
     console.log("passwordLength: " + password.length);
     returnValues[1] = password.length >= MINIMUMPASSWORDLENGTH;
     returnValues[2] = capsCharactersPattern.test(capsCharactersPattern);
