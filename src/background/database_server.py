@@ -46,7 +46,10 @@ class DatabaseServer:
     @app.route('/databases/add_job', methods=['POST'])
     def add_job():
         token = request.headers.get('Authorization')
-        userId = decode_user_from_token(token)["userId"]
+        user = decode_user_from_token(token)
+        if not user:
+            return "Invalid Token", 401
+        userId = user["userId"]
         #Load the job data from the request, it is the the form of a string
         #so we load it into json using json.loads
         try:
