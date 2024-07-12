@@ -64,3 +64,17 @@ User code needs to:
         -CALLS:
             addUserToDB
 */ 
+
+export function createUser({userId=null,email=null, name=null, password=null, location=null, google_id=null} = {}){
+    if (!email || !password){
+        console.error("INCOMPLETE USER OBJECT, user must have email and password")
+    }
+    return {
+        userId: userId,
+        email: email,
+        name: name,
+        password: password,
+        location: location,
+        google_id: google_id
+    }
+}

@@ -3,11 +3,13 @@ CREATE DATABASE JOBDB;
 USE JOBDB;
 
 CREATE TABLE User (
-    UserID VARCHAR(36) NOT NULL,
+    UserId VARCHAR(36) NOT NULL,
     Email VARCHAR(255) NOT NULL UNIQUE,
     Password VARCHAR(255),
     Google_Id VARCHAR(255) UNIQUE,
     Name VARCHAR(255),
+    Location VARCHAR(255),
+    Salt VARCHAR(50) NOT NULL,
 CONSTRAINT User_PK PRIMARY KEY (UserID)
 );
 CREATE TABLE KeywordList
@@ -65,4 +67,14 @@ CONSTRAINT User_foreign_key_user FOREIGN KEY (User) REFERENCES User(UserID),
 CONSTRAINT Job_foreign_key_company FOREIGN KEY (Company) REFERENCES Company(Company),
 CONSTRAINT Job_foreign_key_keywords FOREIGN KEY (KeywordID) REFERENCES KeywordList(KeywordID)
 ON DELETE CASCADE
+);
+CREATE TABLE UserJob
+(
+    -- Hash of job ID and user ID, ensures both arent already in db
+    UserJobId VARCHAR(36) NOT NULL UNIQUE,
+    JobId VARCHAR(10) NOT NULL,
+    UserId VARCHAR(36) NOT NULL,
+CONSTRAINT UserJob_PK PRIMARY KEY (UserJobId),
+CONSTRAINT UserJob_FK1 FOREIGN KEY (JobId) REFERENCES Job(JobId) ON DELETE CASCADE,
+CONSTRAINT UserJob_FK2 FOREIGN KEY (UserId) REFERENCES User(UserId) ON DELETE CASCADE
 );

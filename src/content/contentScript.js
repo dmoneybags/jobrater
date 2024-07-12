@@ -27,6 +27,7 @@ Sends: a message for db to handle the job
 //Payments
 //deployment
 TEST = true;
+FIRSTJOB = true;
 (() => {
     //No job is loaded yet
     let currentJob = "";
@@ -38,7 +39,15 @@ TEST = true;
         if (type === "NEW") {
             currentJob = jobId;
             console.log(jobId);
-            newJobLoaded(jobId);
+            //Wait a bit of time on the first one
+            if (FIRSTJOB){
+                setTimeout(() => {
+                    newJobLoaded(jobId);
+                    FIRSTJOB = false;
+                }, 2000)
+            } else {
+                newJobLoaded(jobId)
+            }
         }
     });
 
@@ -242,9 +251,6 @@ TEST = true;
         if (companyNameBox) {
             company = companyNameBox.textContent.trim();
             console.log("Company: " + company);
-        } else {
-            //couldn't find company box
-            console.error("Company name box not found");
         }
         //holds the job posting below the company name
         const jobNameBox = document.getElementsByClassName("job-details-jobs-unified-top-card__job-title")[0];

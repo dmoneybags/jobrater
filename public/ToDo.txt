@@ -10,5 +10,3 @@ Finish User code:
         NOTE: we still need to add functionality for sendMessageToAddUser
         NOTE: we still only have a placeholder url in our google auth code
     we are simply going top down
-Implement tokens:
-    part of the above task but still important

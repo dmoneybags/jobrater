@@ -45,6 +45,10 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
             chrome.tabs.sendMessage(tabId, {
                 type: "NEW",
                 jobId: urlParameters.get("currentJobId")
+            }).then(response => {
+                console.log('Message sent successfully:', response);
+            }).catch(error => {
+                console.error('Error sending message to content script:', error);
             });
         }
     }

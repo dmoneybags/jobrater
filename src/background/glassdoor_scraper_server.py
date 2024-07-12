@@ -25,6 +25,7 @@ import httpx
 import json
 from glassdoor_scraper import find_companies, scrape_cache
 from random import choice
+from auth_server import token_required
 
 #Sets up our flask app
 app = Flask(__name__)
@@ -32,6 +33,7 @@ CORS(app)
 
 #Grabs all the relevant glassdoor data for the company given a company as an argument
 @app.route('/get_glassdoor_data', methods=['GET'])
+@token_required
 async def run():
     #Respond to the preflight options request
     if request.method == 'OPTIONS':
@@ -136,4 +138,4 @@ async def run():
     })
 #Runs our server
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5009)

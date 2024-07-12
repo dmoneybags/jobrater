@@ -3,7 +3,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
   entry: {
-    popup: './src/popup/index.js'
+    popup: './public/index.jsx'
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
