@@ -25,7 +25,6 @@ import os
 
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
-API_KEY = os.environ["google_api_key"]
 SECRET_KEY = os.environ["secret_key"]
 
 #write this

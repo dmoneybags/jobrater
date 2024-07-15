@@ -63,11 +63,15 @@ class DatabaseServer:
         print("RECIEVED MESSAGE TO ADD JOB WITH ID " + jobJson["jobId"])
         #Call the database function to execute the insert
         try:
+            response_code = DatabaseFunctions.get_and_add_location(jobJson)
+        except:
+            print("FAILED ADDING JOB LOCATION")
+        try:
             response_code = DatabaseFunctions.add_user_job(userId, jobId)
         except:
             #its honestly ok if we try to read the same job a lot
             #client as of now doenst need to know an error occured
-            return 'Already in User Job DB', 200
+            print('Already in User Job DB')
         try:
             #THIS ADDS THE JOB AND COMPANY AND KEYWORDS EACH TO THEIR
             #INDIVIDUAL TABLES

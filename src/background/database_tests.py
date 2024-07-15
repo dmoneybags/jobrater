@@ -72,7 +72,7 @@ def user_tests():
     print("READDING USER FOR TESTS")
     DatabaseFunctions.add_user(user, salt)
     read_user = json.loads(DatabaseFunctions.read_user_by_email(user["email"]))
-    return read_user["userID"]
+    return read_user["userId"]
 def company_tests():
     print("TESTING COMPANY CODE")
     print("TESTING ADDING COMPANY")
@@ -138,12 +138,17 @@ def user_job_tests(user_id):
     job = json.loads(DatabaseFunctions.read_job_by_id(job_id[0]))
     assert(job["company"] == "Apple")
     print("JOB PERSISTS")
-
+def location_tests():
+    print("TESTING ADDING THE LOCATION")
+    response_code = DatabaseFunctions.get_and_add_location(job_data)
+    print("TESTING READING BACK LOCATION")
+    location = DatabaseFunctions.read_location(job_data["company"], job_data["location"])
+    print(location)
 if __name__ == "__main__":
     user_id = user_tests()
     company_tests()
     job_tests(user_id)
     user_job_tests(user_id)
-
+    location_tests()
 
     

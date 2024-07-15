@@ -10,19 +10,16 @@ Google_places.py
 Listens for requests on port 5002
 '''
 
-from flask import Flask, request, jsonify
+from flask import request
 import os
 import requests
 
-app = Flask(__name__)
-
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-@app.route('/google_places/address', methods=['GET'])
-def get_company_address():
+def get_company_location_object(jobData):
     print("Sending requests")
-    company = request.args.get('company')
-    location_str = request.args.get('locationStr')
+    company = jobData["company"]
+    location_str = jobData["location"]
 
     if not company or not location_str:
         return 'Missing required query parameters', 400
@@ -36,8 +33,6 @@ def get_company_address():
     
     if 'candidates' in data and data['candidates']:
         result = data['candidates'][0]
-        return jsonify({'address': result.get('formatted_address')})
+        return result
     else:
         return 'No results found', 404
-if __name__ == '__main__':
-    app.run(port=5002)

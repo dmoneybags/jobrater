@@ -60,7 +60,6 @@ CREATE TABLE Job
     Mode VARCHAR(15),
     SecondsPostedAgo DECIMAL(7, 0),
     User VARCHAR(36),
-    LocationViaGoogleMaps VARCHAR(70),
     TimeAdded timestamp default current_timestamp not null,
 CONSTRAINT Job_PK PRIMARY KEY (JobId),
 CONSTRAINT User_foreign_key_user FOREIGN KEY (User) REFERENCES User(UserID), 
@@ -77,4 +76,17 @@ CREATE TABLE UserJob
 CONSTRAINT UserJob_PK PRIMARY KEY (UserJobId),
 CONSTRAINT UserJob_FK1 FOREIGN KEY (JobId) REFERENCES Job(JobId) ON DELETE CASCADE,
 CONSTRAINT UserJob_FK2 FOREIGN KEY (UserId) REFERENCES User(UserId) ON DELETE CASCADE
+);
+CREATE TABLE JobLocation
+(
+    QueryStr VARCHAR(70) NOT NULL,
+    JobId VARCHAR(10) NOT NULL,
+    AddressStr VARCHAR(60) NOT NULL,
+    City VARCHAR(30) NOT NULL,
+    ZipCode VARCHAR(6),
+    StateCode VARCHAR(2),
+    Latitude DECIMAL(10,7),
+    Longitude DECIMAL(10,7),
+CONSTRAINT JobLocation_PK PRIMARY KEY (QueryStr),
+CONSTRAINT JobLocation_FK1 FOREIGN KEY (JobId) REFERENCES Job(JobId)
 );
