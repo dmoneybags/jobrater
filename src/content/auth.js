@@ -23,6 +23,9 @@ add token to headers X
 set active user X
 
 */
+const authServer = 'http://localhost:5007/'
+
+
 const setToken = (token) => {
     console.log("Setting auth token to " + token);
     localStorage.setItem("authToken", token);
@@ -56,7 +59,7 @@ const sendGetSaltMsg = (email) => {
         //Our python program runs on port 5007 on our local server
         var xhr = new XMLHttpRequest();
         //call an http request
-        xhr.open('GET', 'http://localhost:5007/get_salt_by_email?email=' + encodeURIComponent(email), true);
+        xhr.open('GET', authServer + 'get_salt_by_email?email=' + encodeURIComponent(email), true);
         xhr.setRequestHeader('Content-type', 'application/json');
         xhr.setRequestHeader('Accept', 'application/json');
         xhr.onload = function () {
@@ -95,7 +98,7 @@ const sendRegisterMsg = (user, salt) => {
         //Our python program runs on port 5007 on our local server
         var xhr = new XMLHttpRequest();
         //call an http request
-        xhr.open('POST', 'http://localhost:5007/register?user=' + encodeURIComponent(JSON.stringify(user)) + '&' + 'salt=' + encodeURIComponent(salt), true);
+        xhr.open('POST', authServer + 'register?user=' + encodeURIComponent(JSON.stringify(user)) + '&' + 'salt=' + encodeURIComponent(salt), true);
         xhr.setRequestHeader('Content-type', 'application/json');
         xhr.setRequestHeader('Accept', 'application/json');
         xhr.onload = function () {
@@ -133,7 +136,7 @@ const sendLoginMsg = (user) => {
         //Our python program runs on port 5007 on our local server
         var xhr = new XMLHttpRequest();
         //call an http request
-        xhr.open('POST', 'http://localhost:5007/login?email=' + encodeURIComponent(user.email) + "&" + "password="+ encodeURIComponent(user.password), true);
+        xhr.open('POST', authServer + 'login?email=' + encodeURIComponent(user.email) + "&" + "password="+ encodeURIComponent(user.password), true);
         xhr.onload = function () {
             //It suceeded
             if (xhr.status === 200) {

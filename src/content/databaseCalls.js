@@ -18,7 +18,7 @@ returns tokens
 adds new users to db
 */
 
-//SERVER SIDE
+databaseServer = 'http://localhost:5001/'
 
 //This function simply checks if the company exists by 
 //querying our db
@@ -29,7 +29,7 @@ const checkIfCompanyExists = (company) => {
         var xhr = new XMLHttpRequest();
         //call an http request
         console.log("Sending Request to get company");
-        xhr.open('GET', 'http://localhost:5001/databases/read_company?company=' + encodeURIComponent(company), true);
+        xhr.open('GET', databaseServer + 'databases/read_company?company=' + encodeURIComponent(company), true);
         xhr.onload = function () {
             //It suceeded
             if (xhr.status == 200){
@@ -55,7 +55,7 @@ const sendMessageToAddJob = (jobJson) => {
         //Our database program runs on port 5001 on our local server
         var xhr = new XMLHttpRequest();
         //call an http request
-        xhr.open('POST', 'http://localhost:5001/databases/add_job?jobJson=' + encodeURIComponent(JSON.stringify(jobJson)), true);
+        xhr.open('POST', databaseServer + 'databases/add_job?jobJson=' + encodeURIComponent(JSON.stringify(jobJson)), true);
         xhr.onload = function () {
             //It suceeded
             if (xhr.status === 200) {
@@ -85,7 +85,7 @@ const getUserData = () => {
         var xhr = new XMLHttpRequest();
         //call an http request
         //No args, uses the users token
-        xhr.open('POST', 'http://localhost:5001/databases/get_user_data', true);
+        xhr.open('POST', databaseServer + 'databases/get_user_data', true);
         xhr.onload = function () {
             //It suceeded
             if (xhr.status === 200) {
@@ -118,7 +118,7 @@ const getUserByGoogleId = (googleId) => {
         //Our database program runs on port 5001 on our local server
         var xhr = new XMLHttpRequest();
         //call an http request
-        xhr.open('POST', 'http://localhost:5001/databases/get_user_by_googleId?googleId=' + encodeURIComponent(googleId), true);
+        xhr.open('POST', databaseServer + 'databases/get_user_by_googleId?googleId=' + encodeURIComponent(googleId), true);
         xhr.onload = function () {
             //It suceeded
             if (xhr.status === 200) {
@@ -151,7 +151,7 @@ const sendMessageToAddUser = (userJson) => {
         //Our database program runs on port 5001 on our local server
         var xhr = new XMLHttpRequest();
         //call an http request
-        xhr.open('POST', 'http://localhost:5001/databases/user=' + encodeURIComponent(JSON.stringify(userJson)), true);
+        xhr.open('POST', databaseServer + 'databases/user=' + encodeURIComponent(JSON.stringify(userJson)), true);
         xhr.onload = function () {
             //It suceeded
             if (xhr.status === 200) {
@@ -180,7 +180,7 @@ const sendMessageToDeleteUser = (user) => {
         var xhr = new XMLHttpRequest();
         //call an http request
         //we do NOT add any args, the token tells it which user to delete
-        xhr.open('POST', 'http://localhost:5001/databases/delete_user', true);
+        xhr.open('POST', databaseServer + 'databases/delete_user', true);
         xhr.onload = function () {
             //It suceeded
             if (xhr.status === 200) {
