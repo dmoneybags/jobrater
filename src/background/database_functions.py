@@ -45,6 +45,7 @@ import uuid
 from decimal import Decimal
 import datetime
 from collections import OrderedDict
+from google_places import get_company_location_object
 
 #Columns in our DB
 JOB_COLUMNS = ["jobId", "applicants", "careerStage", 
@@ -177,7 +178,7 @@ class DatabaseFunctions:
             #%s allows us to inject our values into the string
             editted_cols.append(f"{update_key} = %s")
         col_str = ", ".join(editted_cols)
-        update_str = f"UPDATE Job SET {col_str} WHERE JobId = %s"
+        update_str = f"UPDATE Job SET {col_str} WHERE Job.JobId = %s"
         return update_str
     #Gets the sql code to update a company
     def get_update_str_company(company_values):
@@ -196,16 +197,20 @@ class DatabaseFunctions:
         ON Job.KeywordId = KeywordList.KeywordId
         LEFT JOIN Company
         ON Company.Company = Job.Company
+        LEFT JOIN JobLocation
+        ON JobLocation.QueryStr = CONCAT(Job.Company, " ", Job.LocationStr)
         ORDER BY TimeAdded DESC'''
     def get_select_job_by_id_query():
         return """
-            SELECT * 
-            FROM JOB
-            LEFT JOIN KeywordList
-            ON Job.KeywordId = KeywordList.KeywordId
-            LEFT JOIN Company
-            ON Company.Company = Job.Company
-            WHERE JobID = %s;
+        SELECT * 
+        FROM JOB
+        LEFT JOIN KeywordList
+        ON Job.KeywordId = KeywordList.KeywordId
+        LEFT JOIN Company
+        ON Company.Company = Job.Company
+        LEFT JOIN JobLocation
+        ON JobLocation.QueryStr = CONCAT(Job.Company, " ", Job.LocationStr)
+        WHERE Job.JobID = %s;
         """
     def get_delete_job_by_id_query():
         return f"DELETE FROM Job WHERE JobId=%s"
@@ -252,6 +257,16 @@ class DatabaseFunctions:
         JOIN UserJob ON Job.JobId = UserJob.JobId
         WHERE UserJob.UserId = %s;
         """
+    def get_add_location_query(cols):
+        col_str = ", ".join(cols)
+        vals = ", ".join(["%s"] * len(cols))
+        return f"""
+        INSERT INTO JobLocation ({col_str}) VALUES ({vals})
+        """
+    def get_read_location_query():
+        return f"""
+        SELECT * FROM JOBLOCATION WHERE QUERYSTR = %s
+        """
     #Create company
     #Yes it takes an arg of job_json but theoretically could be called on simply company_json
     def add_company(job_json):
@@ -277,7 +292,9 @@ class DatabaseFunctions:
         if not result or None in result:
             return None
         # Map column names to values
-        result_dict = OrderedDict(zip(DatabaseFunctions.get_columns_from_table("company"), result))
+        first_letter_lower = lambda s: s[:1].lower() + s[1:] if s else ''
+        column_names = [first_letter_lower(desc[0]) for desc in cursor.description]
+        result_dict = OrderedDict(zip(column_names, result))
         cursor.close()
         return json.dumps(result_dict, cls=DecimalEncoder)
     #Update company
@@ -371,7 +388,9 @@ class DatabaseFunctions:
         if not result:
             return None
         # Map column names to values
-        result_dict = OrderedDict(zip(DatabaseFunctions.get_columns_from_table("job"), result))
+        first_letter_lower = lambda s: s[:1].lower() + s[1:] if s else ''
+        column_names = [first_letter_lower(desc[0]) for desc in cursor.description]
+        result_dict = OrderedDict(zip(column_names, result))
         cursor.close()
         return json.dumps(result_dict, cls=DecimalEncoder)
     #Grabs job by id
@@ -384,10 +403,13 @@ class DatabaseFunctions:
         #Pass the job Id to be inserted into the query
         cursor.execute(query, (job_id,))
         result = cursor.fetchone()
+        
         if not result:
             return None
         # Map column names to values
-        result_dict = OrderedDict(zip(DatabaseFunctions.get_columns_from_table("job"), result))
+        first_letter_lower = lambda s: s[:1].lower() + s[1:] if s else ''
+        column_names = [first_letter_lower(desc[0]) for desc in cursor.description]
+        result_dict = OrderedDict(zip(column_names, result))
         response_str = json.dumps(result_dict, cls=DecimalEncoder)
         print("Read job with id " + job_id + " of " + response_str)
         cursor.close()
@@ -438,9 +460,11 @@ class DatabaseFunctions:
         result = cursor.fetchone()
         print("READ USER WITH EMAIL " + email + " GOT ")
         print(result)
+        first_letter_lower = lambda s: s[:1].lower() + s[1:] if s else ''
+        column_names = [first_letter_lower(desc[0]) for desc in cursor.description]
         if not result:
             return None
-        result_dict = OrderedDict(zip(DatabaseFunctions.get_columns_from_table("user"), result))
+        result_dict = OrderedDict(zip(column_names, result))
         cursor.close()
         return json.dumps(result_dict, cls=DecimalEncoder)
     #Read User using the email as primary key
@@ -453,9 +477,11 @@ class DatabaseFunctions:
         query = DatabaseFunctions.get_read_user_by_googleId_query()
         cursor.execute(query, (googleId,))
         result = cursor.fetchone()
+        first_letter_lower = lambda s: s[:1].lower() + s[1:] if s else ''
+        column_names = [first_letter_lower(desc[0]) for desc in cursor.description]
         if not result:
             return None
-        result_dict = OrderedDict(zip(DatabaseFunctions.get_columns_from_table("user"), result))
+        result_dict = OrderedDict(zip(column_names, result))
         cursor.close()
         return json.dumps(result_dict, cls=DecimalEncoder)
     #Adds a user upon the server recieving the json
@@ -527,10 +553,66 @@ class DatabaseFunctions:
         cursor.execute(query, (user_id,))
         results = cursor.fetchall()
         results_list = []
+        first_letter_lower = lambda s: s[:1].lower() + s[1:] if s else ''
+        column_names = [first_letter_lower(desc[0]) for desc in cursor.description]
         for result in results:
-            result_dict = OrderedDict(zip(DatabaseFunctions.get_columns_from_table("job"), result))
+            result_dict = OrderedDict(zip(column_names, result))
             results_list.append(result_dict)
         cursor.close()
         return json.dumps(results_list, cls=DecimalEncoder)
-
-#TO DO: CURSOR CLOSE IT AT THE END
+    #
+    #
+    #   Location Methods
+    #
+    #
+    def get_and_add_location(jobJson):
+        print("ADDING LOCATION")
+        company = jobJson["company"]
+        location_str = jobJson["location"]
+        query_str = company + " " + location_str
+        print(f"QUERY_STR: {query_str}")
+        cursor = DatabaseFunctions.MYDB.cursor()
+        DatabaseFunctions.MYDB.reconnect()
+        #Switch to our jobDb
+        cursor.execute("USE JOBDB")
+        #Queires the google places api
+        location_result = get_company_location_object(jobJson)
+        location_components = location_result["formatted_address"].split(",")
+        #split it into its components
+        addr_str = location_components[0]
+        city = location_components[1]
+        state = location_components[2].split(" ")[0]
+        cols = ["QueryStr", "JobId", "AddressStr", "City", "StateCode"]
+        params = [query_str, jobJson["jobId"], addr_str, city, state]
+        query = DatabaseFunctions.get_add_location_query(cols)
+        try:
+            print("query:")
+            print(query)
+            print("params:")
+            print(params)
+            cursor.execute(query, params)
+            DatabaseFunctions.MYDB.commit()
+        except:
+            cursor.close()
+            return "SERVER ERROR ADDING JOB", 500
+        print(f"ADDED JOB")
+        cursor.close()
+        return 'success', 200
+    def read_location(company, location_str):
+        print("READING LOCATION OBJECT")
+        query_str = company + " " + location_str
+        print(f"QUERY_STR: {query_str}")
+        cursor = DatabaseFunctions.MYDB.cursor()
+        DatabaseFunctions.MYDB.reconnect()
+        #Switch to our jobDb
+        cursor.execute("USE JOBDB")
+        query = DatabaseFunctions.get_read_location_query()
+        cursor.execute(query, (query_str,))
+        result = cursor.fetchone()
+        if not result:
+            return None
+        first_letter_lower = lambda s: s[:1].lower() + s[1:] if s else ''
+        column_names = [first_letter_lower(desc[0]) for desc in cursor.description]
+        result_dict = OrderedDict(zip(column_names, result))
+        return result_dict
+    
