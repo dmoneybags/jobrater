@@ -13,47 +13,18 @@ auth_server.py
 import bcrypt
 from flask_bcrypt import Bcrypt
 from database_functions import DatabaseFunctions 
-import datetime
 import json
 from flask import Flask, request, jsonify, abort
 import jwt
 from google.oauth2 import id_token
 from google.auth.transport import requests
-from functools import wraps
 import os
+from auth_logic import get_token
 
 
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
 API_KEY = os.environ["google_api_key"]
-SECRET_KEY = os.environ["secret_key"]
-
-#write this
-def decode_user_from_token(token):
-    print("DECODING TOKEN OF: " + token)
-    try:
-        # Decode the JWT
-        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-        print(payload)
-        # Extract user information
-        user_email = payload.get("email")
-        user_info = json.loads(DatabaseFunctions.read_user_by_email(user_email))
-        
-        return user_info
-    except jwt.ExpiredSignatureError:
-        # Handle expired token
-        print("Token has expired")
-        return None
-    except jwt.InvalidTokenError:
-        # Handle invalid token
-        print("Invalid token")
-        return None
-def get_token(user, num_hours=1):
-    exp_time = datetime.datetime.utcnow() + datetime.timedelta(hours=num_hours)
-    return jwt.encode({
-        'email': user['email'],
-        'exp': int(exp_time.timestamp())
-    }, SECRET_KEY, algorithm="HS256")
 
 @app.route('/auth/google', methods=['POST'])
 def auth_google():
@@ -70,30 +41,7 @@ def auth_google():
     except ValueError:
         # Invalid token
         return jsonify({'error': 'Invalid token'}), 401
-def token_required(f):
-    #Thought, what to do with current user
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = None
-        if 'Authorization' in request.headers:
-            token = request.headers['Authorization'].split(" ")[1]  # Extract token from header
 
-        if not token:
-            return jsonify({'message': 'Token is missing!'}), 401
-
-        try:
-            user = decode_user_from_token(token)
-            current_user = DatabaseFunctions.read_user_by_email(user["email"])
-            if not current_user:
-                return jsonify({'message': 'User not found!'}), 401
-        except jwt.ExpiredSignatureError:
-            return jsonify({'message': 'Token has expired!'}), 401
-        except jwt.InvalidTokenError:
-            return jsonify({'message': 'Token is invalid!'}), 401
-
-        return f(current_user, *args, **kwargs)
-
-    return decorated
 '''
 Login function, called when a user has to login due to a token expiring
 ARGS: 

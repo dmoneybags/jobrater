@@ -30,7 +30,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import json
 from mysql.connector.errors import IntegrityError
-from auth_server import decode_user_from_token, token_required
+from auth_logic import decode_user_from_token, token_required
 #Set up our server using flask
 app = Flask(__name__)
 #Give support for cross origin requests from our content Script
