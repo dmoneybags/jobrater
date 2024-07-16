@@ -1,3 +1,7 @@
+7/15
+
+Put server side stuff back lol everything that needs a token can totally be client side
+
 7/2/24:
 
 Put appropriate things server-side:

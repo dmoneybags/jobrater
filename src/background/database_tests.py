@@ -3,7 +3,7 @@ from database_functions import DatabaseFunctions
 import mysql.connector
 import os
 import subprocess
-from auth_server import decode_user_from_token, get_token
+from auth_logic import decode_user_from_token, get_token
 
 #TESTS JUST DB CODE, NO SERVERS
 job_data = {
