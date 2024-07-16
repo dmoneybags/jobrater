@@ -23,24 +23,32 @@ add token to headers X
 set active user X
 
 */
+
+
 const authServer = 'http://localhost:5007/'
 
-
+//Sets a token in localStorage overwriting the current entry
+//takes string token as an arg
 const setToken = (token) => {
     console.log("Setting auth token to " + token);
     localStorage.setItem("authToken", token);
 }
+//Retrieves token from localStorage
 const getToken = () => {
     return localStorage.getItem("authToken");
 }
+//sets the active user in localStorage, takes user json as arg 
 const setActiveUser = (user) => {
     console.log("SETTING ACTIVE USER TO " + JSON.stringify(user));
     delete user.password;
     localStorage.setItem("activeUser", JSON.stringify(user));
 }
+//retrieves user from localStorage
 const getActiveUser = () => {
     return JSON.parse(localStorage.getItem("activeUser"));
 }
+//Requests salt from db for hashing client side before full hash is sent to 
+//server for password checking
 const getSalt = (email) => {
     return new Promise((resolve, reject) => {
         sendGetSaltMsg(email)

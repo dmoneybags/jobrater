@@ -59,11 +59,9 @@ CREATE TABLE Job
     LocationStr VARCHAR(50),
     Mode VARCHAR(15),
     SecondsPostedAgo DECIMAL(7, 0),
-    User VARCHAR(36),
     LocationViaGoogleMaps VARCHAR(70),
     TimeAdded timestamp default current_timestamp not null,
 CONSTRAINT Job_PK PRIMARY KEY (JobId),
-CONSTRAINT User_foreign_key_user FOREIGN KEY (User) REFERENCES User(UserID), 
 CONSTRAINT Job_foreign_key_company FOREIGN KEY (Company) REFERENCES Company(Company),
 CONSTRAINT Job_foreign_key_keywords FOREIGN KEY (KeywordID) REFERENCES KeywordList(KeywordID)
 ON DELETE CASCADE
