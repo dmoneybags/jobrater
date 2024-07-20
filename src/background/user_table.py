@@ -20,6 +20,8 @@ class UserTable:
         return """
             SELECT *
             FROM USER
+            LEFT JOIN UserLocation
+            ON User.UserId = UserLocation.UserIdFk
             WHERE Email = %s;
         """
     '''
@@ -34,6 +36,8 @@ class UserTable:
         return """
             SELECT *
             FROM USER
+            LEFT JOIN UserLocation
+            ON User.UserId = UserLocation.UserId
             WHERE Google_Id = %s;
         """
     '''
@@ -69,7 +73,7 @@ class UserTable:
     returns:
         User with data from sql query
     '''
-    def read_user_by_email(email: str) -> User:
+    def read_user_by_email(email: str) -> User | None:
         cursor: MySQLCursor = DatabaseFunctions.MYDB.cursor(dictionary=True)
         DatabaseFunctions.MYDB.reconnect()
         #Switch to our jobDb
@@ -77,6 +81,8 @@ class UserTable:
         query: str = UserTable.__get_read_user_by_email_query()
         cursor.execute(query, (email,))
         result: (Dict[str, RowItemType]) = cursor.fetchone()
+        if not result:
+            return None
         print("READ USER WITH EMAIL " + email + " GOT "+ str(result))
         return User.create_with_sql_row(result)
     '''
@@ -111,7 +117,17 @@ class UserTable:
         cursor.execute("USE JOBDB")
         user_json : Dict = user.to_json()
         query : str = UserTable.__get_add_user_query()
+        try:
+            #user location points to user not the other way around. Delete the 
+            #obj before we add to sql
+            user_json["location"]
+            del user_json["location"]
+        except KeyError:
+            pass
+        user_json["userId"] = str(user_json["userId"])
         params : list[str] = list(user_json.values())
+        print(query)
+        print(params)
         cursor.execute(query, params)
         print("USER SUCCESSFULLY ADDED")
         DatabaseFunctions.MYDB.commit()

@@ -35,7 +35,11 @@ const setToken = (token) => {
 }
 //Retrieves token from localStorage
 const getToken = () => {
-    return localStorage.getItem("authToken");
+    token = localStorage.getItem("authToken");
+    if (!token){
+        console.warn("NO TOKEN LOADED")
+    }
+    return token
 }
 //sets the active user in localStorage, takes user json as arg 
 const setActiveUser = (user) => {

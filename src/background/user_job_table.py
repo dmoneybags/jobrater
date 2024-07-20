@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from database_functions import DatabaseFunctions, DecimalEncoder
+from database_functions import DatabaseFunctions
 from mysql.connector.errors import IntegrityError
 import json
 from uuid import UUID
@@ -66,7 +66,8 @@ class UserJobTable:
     returns
         0 if no errors occured
     '''
-    def add_user_job(user_id : UUID, job_id : str) -> int:
+    def add_user_job(user_id_uuid : UUID | str, job_id : str) -> int:
+        user_id : str = str(user_id_uuid)
         print("ADDING USER JOB WITH USER ID " + user_id + " AND JOB ID OF " + job_id)
         cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
@@ -98,7 +99,8 @@ class UserJobTable:
     returns
         0 if no error occured
     '''
-    def delete_user_job(user_id, job_id):
+    def delete_user_job(user_id_uuid : UUID | str, job_id : str) -> int:
+        user_id : str = str(user_id_uuid)
         cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
         #Switch to our jobDb
@@ -120,8 +122,9 @@ class UserJobTable:
     returns
         list of all jobs as job objectw
     '''
-    def get_user_jobs(user_id: UUID) -> list[Job]:
-        cursor: MySQLCursor = DatabaseFunctions.MYDB.cursor()
+    def get_user_jobs(user_id_uuid: UUID | str) -> list[Job]:
+        user_id : str = str(user_id_uuid)
+        cursor: MySQLCursor = DatabaseFunctions.MYDB.cursor(dictionary=True)
         DatabaseFunctions.MYDB.reconnect()
         #Switch to our jobDb
         cursor.execute("USE JOBDB")
@@ -129,7 +132,7 @@ class UserJobTable:
         cursor.execute(query, (user_id,))
         
         results: list[Dict[str, RowItemType]] = cursor.fetchall()
-        results_list : list[Job] = [Job.from_sql_row(row) for row in results]
+        results_list : list[Job] = [Job.create_with_sql_row(row) for row in results]
         cursor.close()
         return results_list
     

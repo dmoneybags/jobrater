@@ -1,10 +1,11 @@
 from mysql.connector.types import RowType, RowItemType
 from typing import Dict
 from decimal import Decimal
+from typing import Optional
 
 class CompanyInvalidData(Exception):
         def __init__(self, data: any, message : str ="INVALID DATA PASSED TO CONSTRUCTOR"):
-            self.message = message + "DATA RECIEVED: " + str(message)
+            self.message = message + " DATA RECIEVED: " + str(data)
             super().__init__(self.message)
 
 class Company:
@@ -49,7 +50,7 @@ class Company:
         Company object
     '''
     @classmethod
-    def create_with_sql_row(sql_query_row: (Dict[str, RowItemType])) -> 'Company':
+    def create_with_sql_row(cls, sql_query_row: (Dict[str, RowItemType])) -> 'Company':
         company_name : str
         business_outlook_rating : Decimal 
         career_opportunities_rating : Decimal
@@ -61,7 +62,7 @@ class Company:
         work_life_balance_rating : Decimal
         overall_rating : Decimal
         try:
-            company_name = sql_query_row["Company"]
+            company_name = sql_query_row["CompanyName"]
             business_outlook_rating = sql_query_row["BusinessOutlookRating"]
             career_opportunities_rating = sql_query_row["CareerOpportunitiesRating"]
             ceo_rating = sql_query_row["CeoRating"]
@@ -86,7 +87,7 @@ class Company:
         Company object OR None
     '''
     @classmethod
-    def try_create_with_sql_row(sql_query_row: (Dict[str, RowItemType])) -> 'Company' | None:
+    def try_create_with_sql_row(cls, sql_query_row: (Dict[str, RowItemType])) -> Optional['Company']:
         company_name : str
         business_outlook_rating : Decimal 
         career_opportunities_rating : Decimal
@@ -98,7 +99,7 @@ class Company:
         work_life_balance_rating : Decimal
         overall_rating : Decimal
         try:
-            company_name = sql_query_row["Company"]
+            company_name = sql_query_row["CompanyName"]
             business_outlook_rating = sql_query_row["BusinessOutlookRating"]
             career_opportunities_rating = sql_query_row["CareerOpportunitiesRating"]
             ceo_rating = sql_query_row["CeoRating"]
@@ -123,7 +124,7 @@ class Company:
         Company object
     '''
     @classmethod
-    def create_with_json(request_json: Dict) -> 'Company':
+    def create_with_json(cls, request_json: Dict) -> 'Company':
         company_name : str
         business_outlook_rating : Decimal 
         career_opportunities_rating : Decimal
@@ -135,7 +136,7 @@ class Company:
         work_life_balance_rating : Decimal
         overall_rating : Decimal
         try:
-            company_name = request_json["company"]
+            company_name = request_json["companyName"]
             business_outlook_rating = request_json["businessOutlookRating"]
             career_opportunities_rating = request_json["careerOpportunitiesRating"]
             ceo_rating = request_json["ceoRating"]
@@ -160,7 +161,7 @@ class Company:
         Company object or None
     '''
     @classmethod
-    def try_create_with_json(request_json: Dict) -> 'Company' | None:
+    def try_create_with_json(cls, request_json: Dict) -> Optional['Company']:
         company_name : str
         business_outlook_rating : Decimal 
         career_opportunities_rating : Decimal
@@ -172,7 +173,7 @@ class Company:
         work_life_balance_rating : Decimal
         overall_rating : Decimal
         try:
-            company_name = request_json["company"]
+            company_name = request_json["companyName"]
             business_outlook_rating = request_json["businessOutlookRating"]
             career_opportunities_rating = request_json["careerOpportunitiesRating"]
             ceo_rating = request_json["ceoRating"]

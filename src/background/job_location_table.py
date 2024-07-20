@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from database_functions import DatabaseFunctions, DecimalEncoder
+from database_functions import DatabaseFunctions
 from location_finder import LocationFinder
 from job import Job
 from typing import Dict
@@ -22,8 +22,9 @@ class JobLocationTable:
     returns:
         query str
     '''
-    def __get_add_location_query() -> str:
-        cols : list[str] = ["QueryStr", "JobId", "AddressStr", "City", "StateCode"]
+    def __get_add_location_query(location_json : Dict) -> str:
+        cols : list[str] = ["queryStr", "jobId"]
+        cols.extend(list(location_json.keys()))
         col_str : str = ", ".join(cols)
         vals : str = ", ".join(["%s"] * len(cols))
         return f"""
@@ -37,7 +38,7 @@ class JobLocationTable:
     returns:
         query str
     '''
-    def get_read_location_query() -> str:
+    def __get_read_location_query() -> str:
         return f"""
         SELECT * FROM JOBLOCATION WHERE QUERYSTR = %s
         """
@@ -56,7 +57,7 @@ class JobLocationTable:
         #we do sql_friendly here because we dont need all foreign key data
         job_json : Dict = job.to_sql_friendly_json()
         #Queires the google places api
-        location : Location | None = LocationFinder.try_get_company_address(job_json)
+        location : Location | None = LocationFinder.try_get_company_address(job_json["company"], job_json["locationStr"])
         if not location:
             raise(LocationNotFound(job_json))
         return JobLocationTable.add_job_location(location, job)
@@ -76,15 +77,17 @@ class JobLocationTable:
         DatabaseFunctions.MYDB.reconnect()
         #Switch to our jobDb
         cursor.execute("USE JOBDB")
-        print("ADDING LOCATION")
+        print("ADDING JOB LOCATION")
         #we do sql_friendly here because we dont need all foreign key data
         job_json : Dict = job.to_sql_friendly_json()
         company : str = job_json["company"]
         location_str : str = job_json["locationStr"]
         query_str : str = company + " " + location_str
         print(f"QUERY_STR: {query_str}")
-        params = [query_str, job_json["job_id"], location.address_str, location.city, location.state_code]
-        query = JobLocationTable.__get_add_location_query()
+        location_json : Dict = location.to_json()
+        #unpack values
+        params = [query_str, job_json["jobId"], *list(location_json.values())]
+        query = JobLocationTable.__get_add_location_query(location_json)
         try:
             cursor.execute(query, params)
             DatabaseFunctions.MYDB.commit()
@@ -113,7 +116,7 @@ class JobLocationTable:
         print("READING LOCATION OBJECT")
         query_str : str = company + " " + location_str
         print(f"QUERY_STR: {query_str}")
-        query : str = JobLocationTable.get_read_location_query()
+        query : str = JobLocationTable.__get_read_location_query()
         cursor.execute(query, (query_str,))
         result : (Dict[str, RowItemType]) = cursor.fetchone()
         if not result:

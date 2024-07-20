@@ -1,4 +1,4 @@
-from database_functions import DatabaseFunctions, DecimalEncoder
+from database_functions import DatabaseFunctions
 import json
 from collections import OrderedDict
 from typing import Dict
@@ -37,8 +37,12 @@ class CompanyTable:
     '''
     def __get_update_str_company(company_json : Dict) -> str:
         cols : list[str] = list(company_json.keys())
-        col_str : str = ", ".join(cols)
-        update_str : str = f"UPDATE Company SET {col_str} WHERE Company = %s"
+        #name needs to ba at the end, lets pop it right now
+        _ = cols.pop(0)
+        col_str : str = "=%s, ".join(cols)
+        #add on last replacement str
+        col_str = col_str + "=%s"
+        update_str : str = f"UPDATE Company SET {col_str} WHERE CompanyName = %s"
         return update_str
     '''
     __get_delete_company_by_name_query
@@ -49,7 +53,7 @@ class CompanyTable:
         query with %s for replacement
     '''
     def __get_delete_company_by_name_query() -> str:
-        return f"DELETE FROM Company WHERE Company=%s"
+        return f"DELETE FROM Company WHERE CompanyName=%s"
     '''
     __get_read_company_by_name_query
 
@@ -62,7 +66,7 @@ class CompanyTable:
         return """
             SELECT *
             FROM Company
-            WHERE Company = %s;
+            WHERE CompanyName = %s;
         """
     '''
     add_company
@@ -98,7 +102,7 @@ class CompanyTable:
     def read_company_by_id(company_name : str) -> Company | None:
         query : str = CompanyTable.__get_read_company_by_name_query()
         #put in try except, return custom error if doesn't work
-        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
+        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor(dictionary=True)
         DatabaseFunctions.MYDB.reconnect()
         cursor.execute("USE JOBDB")
         cursor.execute(query, (company_name,))
@@ -123,17 +127,19 @@ class CompanyTable:
         company_json : Dict = company.to_json()
         cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
-        print("RECIEVED MESSAGE TO UPDATE Company WITH ID " + company_json["company"])
+        print("RECIEVED MESSAGE TO UPDATE Company WITH ID " + company_json["companyName"])
         #Grab the specific update columns to add to our query
         update : str = CompanyTable.__get_update_str_company(company_json)
         #convert the values of our json to a list
         #Our list will retain order
         params = list(company_json.values())
         #company name needs to be last for the where clause
-        _ = params.pop()
-        params.append(company_json["company"])
+        _ = params.pop(0)
+        params.append(company_json["companyName"])
         cursor.execute("USE JOBDB")
         #Execute the query
+        print(update)
+        print(params)
         cursor.execute(update, params)
         DatabaseFunctions.MYDB.commit()
         cursor.close()

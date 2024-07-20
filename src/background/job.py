@@ -5,6 +5,7 @@ from company import Company
 from location import Location
 from mysql.connector.types import RowType, RowItemType
 from typing import Dict
+from location_finder import LocationFinder
 
 class JobInvalidData(Exception):
         def __init__(self, data: any, message : str ="INVALID DATA PASSED TO CONSTRUCTOR"):
@@ -105,7 +106,7 @@ class Job:
         Job object
     '''
     @classmethod
-    def create_with_sql_row(sql_query_row: (Dict[str, RowItemType])) -> 'Job':
+    def create_with_sql_row(cls, sql_query_row: (Dict[str, RowItemType])) -> 'Job':
         company : Company | None = Company.try_create_with_sql_row(sql_query_row)
         location : Location | None = Location.try_get_location_from_sql_row(sql_query_row)
         job_id : str = sql_query_row["JobId"]
@@ -113,9 +114,18 @@ class Job:
         career_stage : str = sql_query_row["CareerStage"]
         job_name : str = sql_query_row["Job"]
         payment_base : Decimal = sql_query_row["PaymentBase"]
-        payment_freq : PaymentFrequency = sql_query_row["PaymentFreq"]
-        payment_high : Decimal = sql_query_row["PaymentHigh"]
-        location_str : str = sql_query_row["LocationStr"]
+        try:
+            payment_freq : PaymentFrequency = sql_query_row["PaymentFreq"]
+        except KeyError:
+            payment_freq = None
+        try:
+            payment_high : Decimal = sql_query_row["PaymentHigh"]
+        except KeyError:
+            payment_high = None
+        try:
+            location_str : str = sql_query_row["LocationStr"]
+        except KeyError:
+            location_str = None
         mode : Mode = Job.str_to_mode(sql_query_row["Mode"])
         seconds_posted_ago : int = sql_query_row["SecondsPostedAgo"]
         time_added : datetime = sql_query_row["TimeAdded"]
@@ -132,20 +142,38 @@ class Job:
         Job object
     '''
     @classmethod
-    def create_with_json(json_object : Dict) -> 'Job':
-        company : Company | None = Company.try_create_with_json(json_object)
-        location : Location | None = Location.try_get_location_from_json(json_object)
+    def create_with_json(cls, json_object : Dict) -> 'Job':
+        company : Company | None = Company.try_create_with_json(json_object["company"])
+        try:
+            json_object["location"]["addressStr"]
+        except KeyError:
+                location : Location | None = LocationFinder.try_get_company_address(json_object["company"], json_object["locationStr"])
         job_id : str = json_object["jobId"]
         applicants : int = int(json_object["applicants"])
         career_stage : str = json_object["careerStage"]
         job_name : str = json_object["job"]
-        payment_base : Decimal = json_object["paymentBase"]
-        payment_freq : PaymentFrequency = json_object["paymentFreq"]
-        payment_high : Decimal = json_object["paymentHigh"]
-        location_str : str = json_object["locationStr"]
+        try:
+            payment_base : Decimal = json_object["paymentBase"]
+        except KeyError:
+            payment_base = None
+        try:
+            payment_freq : PaymentFrequency = json_object["paymentFreq"]
+        except KeyError:
+            payment_freq = None
+        try:
+            payment_high : Decimal = json_object["paymentHigh"]
+        except KeyError:
+            payment_high = None
+        try:
+            location_str : str = json_object["locationStr"]
+        except KeyError:
+            location_str = None
         mode : Mode = Job.str_to_mode(json_object["mode"])
         seconds_posted_ago : int = json_object["secondsPostedAgo"]
-        time_added : datetime = json_object["timeAdded"]
+        try:
+            time_added : datetime = json_object["timeAdded"]
+        except KeyError:
+            time_added = None
         return cls(job_id, applicants, career_stage, job_name, company, payment_base, payment_freq, payment_high, location_str, mode, seconds_posted_ago,
                    time_added, location)
     '''
@@ -185,16 +213,20 @@ class Job:
         Dict
     '''
     def to_sql_friendly_json(self) -> Dict:
-        return {
+        sql_friendly_dict : Dict = {
             "jobId" : self.job_id,
             "applicants" : self.applicants,
             "careerStage" : self.career_stage,
-            "jobName" : self.job_name,
+            "job" : self.job_name,
             "company" : self.company.company_name,
             "paymentBase" : str(self.payment_base),
             "paymentFreq" : self.payment_freq,
             "locationStr" : self.location_str,
             "mode" : Job.mode_to_str(self.mode),
-            "secondsPostedAgo" : self.seconds_posted_ago,
-            "timeAdded" : str(self.time_added)
+            "secondsPostedAgo" : self.seconds_posted_ago
         }
+        if self.time_added:
+            sql_friendly_dict["timeAdded"] = self.timeAdded
+        if self.location_object:
+            sql_friendly_dict["location"] = self.location_object.to_json()
+        return sql_friendly_dict

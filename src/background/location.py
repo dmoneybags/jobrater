@@ -1,5 +1,6 @@
 from typing import Dict
 from mysql.connector.types import RowType, RowItemType
+from typing import Optional
 
 class LocationInvalidData(Exception):
         def __init__(self, data: any, message : str ="INVALID DATA PASSED TO CONSTRUCTOR"):
@@ -60,7 +61,7 @@ class Location:
     returns Location object or none
     '''
     @classmethod
-    def try_get_location_from_sql_row(sql_query_row: (Dict[str, RowItemType])) -> 'Location' | None:
+    def try_get_location_from_sql_row(cls, sql_query_row: (Dict[str, RowItemType])) -> Optional['Location']:
         try:
             sql_query_row["AddressStr"]
         except KeyError:
@@ -80,7 +81,9 @@ class Location:
     returns Location object if found or none
     '''
     @classmethod
-    def try_get_location_from_json(json_object: Dict) -> 'Location' | None:
+    def try_get_location_from_json(cls, json_object: Dict):
+        if type(json_object) != Dict:
+            raise ValueError(f"TYPE OF DATA IS NOT VALID JSON, TYPE OF: {type(json_object)}")
         try:
             json_object["addressStr"]
         except KeyError:
@@ -108,7 +111,7 @@ class Location:
         Location object from the json
     '''
     @classmethod
-    def create_from_google_places_response(response_json : Dict) -> 'Location':
+    def create_from_google_places_response(cls, response_json : Dict) -> 'Location':
         location_components : list[str] = response_json["formatted_address"].split(",")
         #split it into its components
         addr_str : str = location_components[0]

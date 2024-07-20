@@ -2,11 +2,13 @@ from mysql.connector.types import RowType, RowItemType
 from typing import Dict
 from location import Location
 from uuid import UUID
+from typing import Optional
+import json
 
 
 class UserInvalidData(Exception):
         def __init__(self, data: any, message : str ="INVALID DATA PASSED TO CONSTRUCTOR"):
-            self.message = message + "DATA RECIEVED: " + str(message)
+            self.message = message + " DATA RECIEVED: " + str(data)
             super().__init__(self.message)
 
 class User:
@@ -25,7 +27,7 @@ class User:
     
     returns User Object
     '''
-    def __init__(self, user_id: UUID, email: str, password: str | None, google_id: str | None, first_name: str, last_name: str, location: Location, salt: str | None) -> None:
+    def __init__(self, user_id: UUID, email: str, password: Optional[str], google_id: Optional[str], first_name: str, last_name: str, location: Location, salt: Optional[str]) -> None:
         self.user_id : UUID = user_id
         self.email : str = email
         self.password : str = password
@@ -46,19 +48,22 @@ class User:
     !IMPORTANT: remember to left join location
     '''
     @classmethod
-    def create_with_sql_row(sql_query_row: (Dict[str, RowItemType])) -> 'User':
+    def create_with_sql_row(cls, sql_query_row: (Dict[str, RowItemType])) -> 'User':
         user_id: UUID
         email: str
         #The nonetypes are due to google users not having password data and non google users not having
         #google_ids
-        password: str | None
-        google_id: str | None
+        password: Optional[str] = None
+        google_id: Optional[str] = None
         first_name: str
         last_name: str
         location: Location
-        salt: str | None
+        salt: Optional[str] = None
         try:
             google_id = sql_query_row["GoogleId"]
+            if not google_id:
+                #hop out if we don't have a valid google id
+                raise KeyError
             print("Loading google user")
             try:
                 user_id = UUID(sql_query_row["UserId"])
@@ -68,7 +73,7 @@ class User:
                 location = Location.try_get_location_from_sql_row(sql_query_row)
                 return cls(user_id, email, password, google_id, first_name, last_name, location, salt)
             except KeyError as e:
-                raise UserInvalidData(sql_query_row)
+                raise UserInvalidData(json.dumps(sql_query_row))
         except KeyError as e:
             try:
                 print("Loading traditional user")
@@ -81,7 +86,7 @@ class User:
                 salt = sql_query_row["Salt"]
                 return cls(user_id, email, password, google_id, first_name, last_name, location, salt)
             except KeyError as e:
-                raise UserInvalidData(sql_query_row)
+                raise UserInvalidData(json.dumps(sql_query_row))
     '''
     create_with_json
 
@@ -96,29 +101,33 @@ class User:
     !IMPORTANT: because our json_object is created in javascript column names are lowercase first, then camelcase
     '''
     @classmethod
-    def create_with_json(json_object : Dict) -> 'User':
+    def create_with_json(cls, json_object : Dict) -> 'User':
         user_id: UUID
         email: str
         #The nonetypes are due to google users not having password data and non google users not having
         #google_ids
-        password: str | None
-        google_id: str | None
+        password: Optional[str] = None
+        google_id: Optional[str] = None
         first_name: str
         last_name: str
-        location: Location
-        salt: str | None
+        location: Optional[Location] = None
+        salt: Optional[str] = None
         try:
             google_id = json_object["googleId"]
+            if not google_id:
+                #hop out if we don't have a valid google id
+                raise KeyError
             print("Loading google user")
             try:
                 user_id = UUID(json_object["userId"])
                 email = json_object["email"]
                 first_name = json_object["firstName"]
                 last_name = json_object["lastName"]
-                location = Location.try_get_location_from_json(json_object)
+                if "location" in list(json_object.keys()):
+                    location = Location.try_get_location_from_json(json_object["location"])
                 return cls(user_id, email, password, google_id, first_name, last_name, location, salt)
             except KeyError as e:
-                raise UserInvalidData(json_object)
+                raise UserInvalidData(json.dumps(json_object))
         except KeyError as e:
             try:
                 print("Loading traditional user")
@@ -126,12 +135,15 @@ class User:
                 email = json_object["email"]
                 first_name = json_object["firstName"]
                 last_name = json_object["lastName"]
-                location = Location.try_get_location_from_json(json_object)
+                if "location" in list(json_object.keys()):
+                    location = Location.try_get_location_from_json(json_object["location"])
                 password = json_object["password"]
                 salt = json_object["salt"]
                 return cls(user_id, email, password, google_id, first_name, last_name, location, salt)
             except KeyError as e:
-                raise UserInvalidData(json_object)
+                print("FAILED TO LOAD")
+                print(json.dumps(json_object))
+                raise UserInvalidData(json.dumps(json_object))
     '''
     to_json
 
@@ -144,14 +156,14 @@ class User:
     '''
     def to_json(self):
         return {
-            "userId": self.user_id,
+            "userId": str(self.user_id),
             "email": self.email,
             "password": self.password,
             "googleId": self.google_id,
             "firstName": self.first_name,
             "lastName": self.last_name,
             "salt": self.salt,
-            "location": self.location.to_json()
+            "location": self.location.to_json() if self.location else None
         }
     
     

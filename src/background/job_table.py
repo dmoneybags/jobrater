@@ -1,8 +1,8 @@
-from database_functions import DatabaseFunctions, DecimalEncoder
+from database_functions import DatabaseFunctions
 from collections import OrderedDict
 import json
 import uuid
-from background.company_table import CompanyTable
+from company_table import CompanyTable
 from user_job_table import UserJobTable
 from job_location_table import JobLocationTable
 from job import Job
@@ -43,7 +43,10 @@ class JobTable:
     '''
     def __get_update_str_job(job_json : Dict) -> str:
         cols : list[str] = list(job_json.keys())
-        col_str : str = ", ".join(cols)
+        _ = cols.pop(0)
+        col_str : str = "=%s, ".join(cols)
+        #add on last replacement str
+        col_str = col_str + "=%s"
         update_str : str = f"UPDATE Job SET {col_str} WHERE Job.JobId = %s"
         return update_str
     '''
@@ -57,10 +60,8 @@ class JobTable:
     def __get_most_recent_job_query() -> str:
         return '''SELECT *
         FROM Job
-        LEFT JOIN KeywordList
-        ON Job.KeywordId = KeywordList.KeywordId
         LEFT JOIN Company
-        ON Company.Company = Job.Company
+        ON Company.CompanyName = Job.Company
         LEFT JOIN JobLocation
         ON JobLocation.QueryStr = CONCAT(Job.Company, " ", Job.LocationStr)
         ORDER BY TimeAdded DESC'''
@@ -76,10 +77,8 @@ class JobTable:
         return """
         SELECT * 
         FROM JOB
-        LEFT JOIN KeywordList
-        ON Job.KeywordId = KeywordList.KeywordId
         LEFT JOIN Company
-        ON Company.Company = Job.Company
+        ON Company.CompanyName = Job.Company
         LEFT JOIN JobLocation
         ON JobLocation.QueryStr = CONCAT(Job.Company, " ", Job.LocationStr)
         WHERE Job.JobID = %s;
@@ -110,15 +109,15 @@ class JobTable:
     returns:
         0 if no errors occured
     '''
-    def add_job_with_foreign_keys(job: Job, user_id: UUID) -> int:
+    def add_job_with_foreign_keys(job : Job, user_id_uuid : UUID | str) -> int:
+        user_id : str = str(user_id_uuid)
         #check that the company isn't already in our DB if it isn't then we add it
-        if job.company is not None:
-            try:
-                CompanyTable.add_company(job.company)
-                print("COMPANY SUCCESSFULLY ADDED")
-            except IntegrityError:
-                print("COMPANY ALREADY IN DB")
-                pass
+        try:
+            CompanyTable.add_company(job.company)
+            print("COMPANY SUCCESSFULLY ADDED")
+        except IntegrityError:
+            print("COMPANY ALREADY IN DB")
+            pass
         try:
             JobTable.add_job(job)
             print("JOB SUCCESSFULLY ADDED")
@@ -131,7 +130,10 @@ class JobTable:
         except IntegrityError:
             print("USER JOB ALREADY IN DB")
         try:
-            JobLocationTable.add_job_location(job)
+            if job.location_object:
+                JobLocationTable.add_job_location(job.location_object, job)
+            else:
+                JobLocationTable.get_and_add_location_for_job(job)
         except IntegrityError:
             print('job location already in DB')
         return 0
@@ -156,7 +158,7 @@ class JobTable:
         try:
             cursor.execute(job_add_str, list(job_json.values()))
         except IntegrityError as e:
-            cursor.closer()
+            cursor.close()
             raise e
         DatabaseFunctions.MYDB.commit()
         cursor.close()
@@ -194,7 +196,7 @@ class JobTable:
         Job Object
     '''
     def read_job_by_id(job_id : str) -> Job | None:
-        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
+        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor(dictionary=True)
         DatabaseFunctions.MYDB.reconnect()
         query : str = JobTable.__get_select_job_by_id_query()
         #Switch to JOBDB
@@ -204,7 +206,8 @@ class JobTable:
         result : Dict[str, RowItemType] = cursor.fetchone()
         if not result:
             return None
-        print("Read job with id " + job_id + " of " + result)
+        print("Read job with id " + job_id + " of ")
+        print(result)
         cursor.close()
         return Job.create_with_sql_row(result)
     '''
@@ -228,7 +231,7 @@ class JobTable:
         #convert the values of our json to a list
         #Our list will retain order
         params : list = list(job_json.values())
-        _ = params.pop()
+        _ = params.pop(0)
         #add the job Id to the json
         params.append(job_json["jobId"])
         cursor.execute("USE JOBDB")
