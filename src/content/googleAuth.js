@@ -11,13 +11,13 @@ leads here if the user chooses to sign up with google
 */
 
 //SERVER SIDE CODE
-
+const baseCallbackUrl = 'http://localhost:3000'
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 passport.use(new GoogleStrategy({
     clientSecret: process.env.GOOGLE_API_KEY,
     //placeholder url
-    callbackURL: 'http://localhost:3000/auth/google/callback'
+    callbackURL: baseCallbackUrl + '/auth/google/callback'
 }, (token, tokenSecret, profile, done) => {
     getUserByGoogleId(profile.id)
     .then((userJson) => {

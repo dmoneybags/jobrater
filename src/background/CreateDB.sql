@@ -5,31 +5,17 @@ USE JOBDB;
 CREATE TABLE User (
     UserId VARCHAR(36) NOT NULL,
     Email VARCHAR(255) NOT NULL UNIQUE,
+    -- if user auths with google we dont store password
     Password VARCHAR(255),
-    Google_Id VARCHAR(255) UNIQUE,
-    Name VARCHAR(255),
-    Location VARCHAR(255),
-    Salt VARCHAR(50) NOT NULL,
-CONSTRAINT User_PK PRIMARY KEY (UserID)
-);
-CREATE TABLE KeywordList
-(
-    KeywordID VARCHAR(36) NOT NULL,
-    Keyword1 VARCHAR(15),
-    Keyword2 VARCHAR(15),
-    Keyword3 VARCHAR(15),
-    Keyword4 VARCHAR(15),
-    Keyword5 VARCHAR(15),
-    Keyword6 VARCHAR(15),
-    Keyword7 VARCHAR(15),
-    Keyword8 VARCHAR(15),
-    Keyword9 VARCHAR(15),
-    Keyword10 VARCHAR(15),
-CONSTRAINT Keyword_PK PRIMARY KEY (KeywordID)
+    GoogleId VARCHAR(255) UNIQUE,
+    FirstName VARCHAR(255) NOT NULL,
+    LastName VARCHAR(255) NOT NULL,
+    Salt VARCHAR(50),
+CONSTRAINT User_PK PRIMARY KEY (UserId)
 );
 CREATE TABLE Company
 (
-    Company VARCHAR(50) NOT NULL UNIQUE,
+    CompanyName VARCHAR(50) NOT NULL UNIQUE,
     BusinessOutlookRating DECIMAL(3, 2),
     CareerOpportunitiesRating DECIMAL(2, 1),
     CeoRating DECIMAL(3, 2),
@@ -42,7 +28,7 @@ CREATE TABLE Company
     -- timestamp added to keep our data current, if data is older than lets say a month
     -- we regrab it
     TimeAdded timestamp default current_timestamp not null,
-CONSTRAINT Company_PK PRIMARY KEY (Company)
+CONSTRAINT Company_PK PRIMARY KEY (CompanyName)
 );
 CREATE TABLE Job
 (
@@ -55,17 +41,12 @@ CREATE TABLE Job
     PaymentBase DECIMAL(9, 2),
     PaymentFreq VARCHAR(8),
     PaymentHigh DECIMAL(9, 2),
-    KeywordID VARCHAR(36),
     LocationStr VARCHAR(50),
     Mode VARCHAR(15),
-    SecondsPostedAgo DECIMAL(7, 0),
-    User VARCHAR(36),
+    SecondsPostedAgo INT(11) UNSIGNED,
     TimeAdded timestamp default current_timestamp not null,
 CONSTRAINT Job_PK PRIMARY KEY (JobId),
-CONSTRAINT User_foreign_key_user FOREIGN KEY (User) REFERENCES User(UserID), 
-CONSTRAINT Job_foreign_key_company FOREIGN KEY (Company) REFERENCES Company(Company),
-CONSTRAINT Job_foreign_key_keywords FOREIGN KEY (KeywordID) REFERENCES KeywordList(KeywordID)
-ON DELETE CASCADE
+CONSTRAINT Job_foreign_key_company FOREIGN KEY (Company) REFERENCES Company(CompanyName) ON DELETE CASCADE
 );
 CREATE TABLE UserJob
 (
@@ -88,5 +69,17 @@ CREATE TABLE JobLocation
     Latitude DECIMAL(10,7),
     Longitude DECIMAL(10,7),
 CONSTRAINT JobLocation_PK PRIMARY KEY (QueryStr),
-CONSTRAINT JobLocation_FK1 FOREIGN KEY (JobId) REFERENCES Job(JobId)
+CONSTRAINT JobLocation_FK1 FOREIGN KEY (JobId) REFERENCES Job(JobId) ON DELETE CASCADE
+);
+CREATE TABLE UserLocation
+(
+    UserIdFk VARCHAR(36) NOT NULL,
+    AddressStr VARCHAR(60) NOT NULL,
+    City VARCHAR(30) NOT NULL,
+    ZipCode VARCHAR(6),
+    StateCode VARCHAR(2),
+    Latitude DECIMAL(10,7),
+    Longitude DECIMAL(10,7),
+CONSTRAINT UserLocation_PK PRIMARY KEY (UserIdFk),
+CONSTRAINT UserLocation_FK FOREIGN KEY (UserIdFk) REFERENCES User(UserId)
 );

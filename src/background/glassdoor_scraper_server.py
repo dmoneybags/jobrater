@@ -23,15 +23,30 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import httpx
 import json
-from glassdoor_scraper import find_companies, scrape_cache
+from glassdoor_scraper import find_companies, scrape_cache, FoundCompany
 from random import choice
 from auth_server import token_required
+from typing import Dict
 
 #Sets up our flask app
-app = Flask(__name__)
+app : Flask = Flask(__name__)
+
+PORT : int = 5009
+
+#Allow cross origin requests
 CORS(app)
 
-#Grabs all the relevant glassdoor data for the company given a company as an argument
+'''
+run
+
+runs our glassdoor scraper to get data on the company
+
+Args:
+    response
+        company: str name of the company
+returns:
+    json dict of the companies info
+'''
 @app.route('/get_glassdoor_data', methods=['GET'])
 @token_required
 async def run():
@@ -43,14 +58,14 @@ async def run():
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
         return response
-    company = request.args.get('company', default="NO COMPANY LOADED", type=str)
+    company : str = request.args.get('company', default="NO COMPANY LOADED", type=str)
     #remove non utf8 characters
-    company = company.encode('utf-8', errors='ignore').decode('utf-8')
+    company : str = company.encode('utf-8', errors='ignore').decode('utf-8')
     if company == "NO COMPANY LOADED":
         raise AttributeError("Could not load company")
     print("Company Loaded: " + company)
     #gives a list of possible human looking headers, we choose one randomly
-    headers_list = [
+    headers_list : list[Dict] = [
         {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -116,14 +131,14 @@ async def run():
             "DNT": "1"
         }
     ]
-    client = httpx.Client(headers=choice(headers_list), follow_redirects=True)
+    client : httpx.Client = httpx.Client(headers=choice(headers_list), follow_redirects=True)
     #block execution until we find the companies
-    companies = await find_companies(company, client)
+    companies : list[FoundCompany] = await find_companies(company, client)
     #Grab the url to the company
-    company_data_url = companies[0]["url_reviews"]
+    company_data_url : str = companies[0]["url_reviews"]
     print("Company Data Url: "+company_data_url)
     #Await scraping the company data from json embeded in the html
-    company_data_full = await scrape_cache(company_data_url, client)
+    company_data_full : Dict = await scrape_cache(company_data_url, client)
     print(json.dumps(company_data_full, indent=2))
     return jsonify({
         "overallRating": company_data_full["ratings"]["overallRating"],
@@ -138,4 +153,4 @@ async def run():
     })
 #Runs our server
 if __name__ == '__main__':
-    app.run(debug=True, port=5009)
+    app.run(debug=True, port=PORT)

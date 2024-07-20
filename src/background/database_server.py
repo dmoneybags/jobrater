@@ -25,12 +25,21 @@ initialized
 '''
 
 from flask import Flask, abort
-from database_functions import DatabaseFunctions
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import json
 from mysql.connector.errors import IntegrityError
-from auth_server import decode_user_from_token, token_required
+from auth_logic import decode_user_from_token, token_required
+from job_location_table import JobLocationTable
+from user_job_table import UserJobTable
+from user_table import UserTable
+from job_table import JobTable
+from company_table import CompanyTable
+from company import Company
+from job import Job
+from user import User
+from typing import Dict
+
 #Set up our server using flask
 app = Flask(__name__)
 #Give support for cross origin requests from our content Script
@@ -42,92 +51,134 @@ class DatabaseServer:
     # JOB METHODS
     #
     #
+    '''
+    add_job
+
+    recieves the request to add a job and executes the request
+        request
+            token: str token of the users auth
+    
+    returns Response
+    '''
     @token_required
     @app.route('/databases/add_job', methods=['POST'])
     def add_job():
-        token = request.headers.get('Authorization')
-        user = decode_user_from_token(token)
-        if not user:
-            return "Invalid Token", 401
-        userId = user["userId"]
-        #Load the job data from the request, it is the the form of a string
-        #so we load it into json using json.loads
+        token : str = request.headers.get('Authorization')
+        user_id : str = decode_user_from_token(token).user_id
         try:
-            message = request.args.get('jobJson', default="NO JOB JSON LOADED", type=str)
-            jobJson = json.loads(message)
-            jobId = jobJson["jobId"]
+            message : str = request.args.get('jobJson', default="NO JOB JSON LOADED", type=str)
+            job_json : Dict = json.loads(message)
+            print("========= RECIEVED JOB JSON OF =========== \n\n")
+            print(json.dumps(job_json, indent=4))
+            job_id : str = job_json["jobId"]
+            print("\n\n")
         except json.JSONDecodeError:
             print("YOUR JOB JSON OF " + message + "IS INVALID")
             #Invalid request
             return abort(403)
-        print("RECIEVED MESSAGE TO ADD JOB WITH ID " + jobJson["jobId"])
+        print(job_json)
+        job : Job = Job.create_with_json(job_json)
+        print("RECIEVED MESSAGE TO ADD JOB WITH ID " + job_json["jobId"])
         #Call the database function to execute the insert
-        try:
-            response_code = DatabaseFunctions.get_and_add_location(jobJson)
-        except:
-            print("FAILED ADDING JOB LOCATION")
-        try:
-            response_code = DatabaseFunctions.add_user_job(userId, jobId)
-        except:
-            #its honestly ok if we try to read the same job a lot
-            #client as of now doenst need to know an error occured
-            print('Already in User Job DB')
-        try:
-            #THIS ADDS THE JOB AND COMPANY AND KEYWORDS EACH TO THEIR
-            #INDIVIDUAL TABLES
-            response_code = DatabaseFunctions.add_job(jobJson, userId)
-            return response_code
-        except IntegrityError:
-            #its honestly ok if we try to read the same job a lot
-            #client as of now doenst need to know an error occured
-            return 'Already in DB', 200
+        JobTable.add_job_with_foreign_keys(job, user_id)
+        return 'success', 200
+    '''
+    read_most_recent_job
+
+    reads the most recently added job from the db
+
+    args:
+        None
+    returns:
+        json representation of job
+    '''
+    @token_required
     @app.route('/databases/read_most_recent_job', methods=['GET'])
     def read_most_recent_job():
         #Call the database function to select and sort to the most recent job
-        result = DatabaseFunctions.read_most_recent_job()
-        if not result:
+        job : Job | None = JobTable.read_most_recent_job()
+        if not job:
             #Not found
-            print(1, "DB IS EMPTY")
+            print("DB IS EMPTY")
             abort(404)
         print("RETURNING RESULT")
-        return result
+        return job.to_json()
+    '''
+    read_job_by_id
+
+    recieves request to read a company by the companies str id and returns the json representation of the job 
+
+    args:
+        request
+            job_id str job id from linkedin
+    returns:
+        json representation of job
+    '''
+    @token_required
     @app.route('/databases/read_job_by_id', methods=['GET'])
     def read_job_by_id():
         #Grab the jobId from the request, it is in the form of a string
         try:
-            jobId = request.args.get('jobId', default="NO JOB ID LOADED", type=str)
+            job_id : str = request.args.get('jobId', default="NO JOB ID LOADED", type=str)
         except:
             #invalid request
             print("Your request of: " + request)
             abort(403)
-        print("JOB ID:  " + jobId)
-        result = DatabaseFunctions.read_job_by_id(jobId)
-        if not result:
+        print("JOB ID:  " + job_id)
+        job : Job | None = JobTable.read_job_by_id(job_id)
+        if not job:
             print("JOB NOT IN DB")
             abort(404)
-        return result
+        return job.to_json()
+    '''
+    update_job
+
+    recieves request to update company
+
+    args:
+        request
+            jobJson the json of the job to set the job to
+    returns:
+        response message and code
+    '''
+    @token_required
     @app.route('/databases/update_job', methods=['POST'])
     def update_job():
         #We take an argument of the whole job data in the from a json string
         try:
-            message = request.args.get('jobJson', default="NO JOB JSON LOADED", type=str)
-            jobJson = json.loads(message)
+            message : str = request.args.get('jobJson', default="NO JOB JSON LOADED", type=str)
+            job_json : Dict = json.loads(message)
+            job : Job = Job.create_with_json(job_json)
         except json.JSONDecodeError:
             print("YOUR JOB JSON OF " + request + "IS INVALID")
             #Invalid request
             return abort(403)
-        return DatabaseFunctions.update_job(jobJson)
+        JobTable.update_job(job)
+        return 'success', 200
+    '''
+    delete_job
+
+    recieves request to delete company
+
+    args:
+        request
+            job_id the id of the job to delete
+    returns:
+        response message and code
+    '''
+    @token_required
     @app.route('/databases/delete_job', methods=['POST'])
     def delete_job():
         #Get the job id from the request
         try:
-            jobId = request.args.get('jobId', default="NO JOB ID LOADED", type=str)
+            job_id : str = request.args.get('jobId', default="NO JOB ID LOADED", type=str)
         except:
             print("Request of: " + request + " is invalid")
             #Invalid request
             return abort(403)
         #run the sql code
-        return DatabaseFunctions.delete_job(jobId)
+        JobTable.delete_job_by_id(job_id)
+        return 'success', 200
     #
     #
     # COMPANY METHODS
@@ -135,63 +186,116 @@ class DatabaseServer:
     #
     #We only give the server an option to read companies,
     #theres no reason for us to make calls to update or delete companies yet
+    '''
+    read_company_by_name
+
+    responds to request and gets a companys data by name
+
+    args:
+        request
+            company: str company name
+    returns
+        company json
+    '''
     @token_required
     @app.route('/databases/read_company', methods=["GET"])
-    def read_company():
+    def read_company_by_name():
         try:
-            company = request.args.get('company', default="NO COMPANY LOADED", type=str)
+            company : str = request.args.get('company', default="NO COMPANY LOADED", type=str)
         except:
             print("Request of: " + request + " is invalid")
             #Invalid request
             return abort(403)
         print("Recieved message to read company: " + company)
-        result = DatabaseFunctions.read_company_by_id(company)
-        if not result:
+        company : Company | None = CompanyTable.read_company_by_id(company)
+        if not company:
             abort(404)
-        return result
+        return company.to_json()
     #
     #
     # USER METHODS
     #
     #
+    '''
+    get_user_data
+
+    responds to a request to retrive the users data from the dbs
+
+    for now just:
+        user columns
+        user jobs
+    
+    args:
+        request
+            token: JWT token that holds user id
+    returns:
+        json with user data and job data
+    '''
     @token_required
     @app.route('/databases/get_user_data', methods=["GET"])
-    #TO DO: ADD RETURNING JOBS
     def get_user_data():
-        token = request.headers.get('Authorization')
+        token : str = request.headers.get('Authorization')
         if not token:
             return 'No token recieved', 401
-        user = decode_user_from_token(token)
-        if not user:
-            return 'Invalid Token', 401
+        user : User | None = decode_user_from_token(token)
         if not user:
             abort(404)
-        jobs = DatabaseFunctions.get_user_jobs(user["userId"])
-        return jsonify({"user": user, "jobs": jobs})
+        jobs : list[Job] = UserJobTable.get_user_jobs(user["userId"])
+        json_jobs : list[Dict] = [job.to_json() for job in jobs]
+        return jsonify({"user": user.to_json(), "jobs": json_jobs})
+    '''
+    get_user_data_by_googleId
+
+    grabs a users data using their google id instead of their token
+
+    no implementation yet
+
+    args:
+        request
+            googleId: the google id of the user as a str
+    returns:
+        json with user data and job data
+    '''
+    #Should this require token? what is the implementation
     @app.route('/databases/get_user_by_googleId', methods=["GET"])
-    def get_user_by_googleId():
+    def get_user_data_by_googleId():
         try:
-            googleId = request.args.get('googleId', default="NO googleId LOADED", type=str)
+            googleId : str = request.args.get('googleId', default="NO googleId LOADED", type=str)
         except:
             print("Request of: " + request + " is invalid")
             #Invalid request
             return abort(403)
-        result = DatabaseFunctions.read_user_by_googleId(googleId)
-        if not result:
+        user : User | None = UserTable.read_user_by_googleId(googleId)
+        if not user:
             abort(404)
-        return result
+        jobs : list[Job] = UserJobTable.get_user_jobs(user["userId"])
+        json_jobs : list[Dict] = [job.to_json() for job in jobs]
+        return jsonify({"user": user.to_json(), "jobs": json_jobs})
+    '''
+    delete_user
+
+    deletes a user using the token passed in the request
+
+    args:
+        request
+            token: jwt auth token
+    returns:
+        success message or error
+    '''
+    @token_required
     @app.route('/databases/delete_user', methods=['POST'])
     def delete_user():
-        token = request.headers.get('Authorization')
+        token : str = request.headers.get('Authorization')
         if not token:
             return 'No token recieved', 401
-        user = decode_user_from_token(token)
+        user : User | None = decode_user_from_token(token)
         if not user:
             return 'Invalid Token', 401
-        user_email = user["email"]
-        if not DatabaseFunctions.read_user_by_email(user_email):
+        user_email : str = user.email
+        if not UserTable.read_user_by_email(user_email):
             return jsonify({'message': 'User not in db'}), 401
-        return DatabaseFunctions.delete_user(user_email)
+        UserTable.delete_user_by_email(user_email)
+        return 'success', 200
 if __name__ == '__main__':
     #Run the app on port 5001
     app.run(debug=True, port=5001)
