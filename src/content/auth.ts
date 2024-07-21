@@ -25,30 +25,42 @@ set active user X
 */
 
 
-const authServer = 'http://localhost:5007/'
+const authServer: string = 'http://localhost:5007/'
 
-//Sets a token in localStorage overwriting the current entry
-//takes string token as an arg
-const setToken = (token) => {
+/**
+ * setToken
+ * 
+ * Sets the auth token in local storage
+ * @param token : string, the string token recieved from the server
+ */
+const setToken = (token : string): void => {
     console.log("Setting auth token to " + token);
     localStorage.setItem("authToken", token);
 }
-//Retrieves token from localStorage
-const getToken = () => {
-    token = localStorage.getItem("authToken");
+/** 
+getToken
+
+returns the users token if found, else null
+@returns {string | null} the token or null
+*/
+const getToken = (): string | null => {
+    const token : string | null = localStorage.getItem("authToken");
     if (!token){
         console.warn("NO TOKEN LOADED")
     }
     return token
 }
-//sets the active user in localStorage, takes user json as arg 
+/**
+ * 
+ * @param user : 
+ */
 const setActiveUser = (user) => {
     console.log("SETTING ACTIVE USER TO " + JSON.stringify(user));
     delete user.password;
     localStorage.setItem("activeUser", JSON.stringify(user));
 }
 //retrieves user from localStorage
-const getActiveUser = () => {
+const getActiveUser = (): Object => {
     return JSON.parse(localStorage.getItem("activeUser"));
 }
 //Requests salt from db for hashing client side before full hash is sent to 
