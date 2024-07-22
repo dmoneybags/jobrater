@@ -11,6 +11,7 @@ from mysql.connector.errors import IntegrityError
 from uuid import UUID
 from mysql.connector.cursor import MySQLCursor
 from mysql.connector.types import RowType, RowItemType
+from job_location_table import LocationNotFound
 
 
 class JobTable: 
@@ -107,17 +108,19 @@ class JobTable:
         job: job object with foreign keys
         user_id: user UUID for user that "owns" the job
     returns:
-        0 if no errors occured
+        full job with all data for client
     '''
-    def add_job_with_foreign_keys(job : Job, user_id_uuid : UUID | str) -> int:
+    def add_job_with_foreign_keys(job : Job, user_id_uuid : UUID | str) -> Job:
         user_id : str = str(user_id_uuid)
         #check that the company isn't already in our DB if it isn't then we add it
-        try:
+        if not CompanyTable.read_company_by_id(job.company.name):
             CompanyTable.add_company(job.company)
+            #just being sure we have the proper data
+            job.company = CompanyTable.read_company_by_id(job.company.company_name)
             print("COMPANY SUCCESSFULLY ADDED")
-        except IntegrityError:
+        else:
             print("COMPANY ALREADY IN DB")
-            pass
+            job.company = CompanyTable.read_company_by_id(job.company.company_name)
         try:
             JobTable.add_job(job)
             print("JOB SUCCESSFULLY ADDED")
@@ -133,10 +136,14 @@ class JobTable:
             if job.location_object:
                 JobLocationTable.add_job_location(job.location_object, job)
             else:
-                JobLocationTable.get_and_add_location_for_job(job)
+                try:
+                    job.location_object = JobLocationTable.get_and_add_location_for_job(job)
+                except LocationNotFound:
+                    print("COULD NOT FIND LOCATION FOR JOB: " + job.job_name)
+                    job.location_object = None
         except IntegrityError:
             print('job location already in DB')
-        return 0
+        return job
     '''
     add_job
 

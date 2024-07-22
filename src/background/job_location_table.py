@@ -51,16 +51,17 @@ class JobLocationTable:
         job: doesn't need to have location in fact, should not have location. if a job already has a location use add_job_location
         and split it out of the object
     returns:
-        0 if no errors occured
+        the location object
     '''
-    def get_and_add_location_for_job(job: Job) -> int:
+    def get_and_add_location_for_job(job: Job) -> Location:
         #we do sql_friendly here because we dont need all foreign key data
         job_json : Dict = job.to_sql_friendly_json()
         #Queires the google places api
-        location : Location | None = LocationFinder.try_get_company_address(job_json["company"], job_json["locationStr"])
+        location : Location | None = LocationFinder.try_get_company_address(job_json["company"]["companyName"], job_json["locationStr"])
         if not location:
             raise(LocationNotFound(job_json))
-        return JobLocationTable.add_job_location(location, job)
+        JobLocationTable.add_job_location(location, job)
+        return location
     '''
     add_job_location
 

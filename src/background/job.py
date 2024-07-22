@@ -63,6 +63,7 @@ class Job:
         self.company : Company | None = company
         self.payment_base : Decimal | None = payment_base
         self.payment_freq : PaymentFrequency | None = payment_freq
+        self.payment_high : Decimal | None = payment_high
         self.location_str : str | None = location_str
         self.mode : Mode = mode
         self.seconds_posted_ago : int = seconds_posted_ago
@@ -147,7 +148,7 @@ class Job:
         try:
             json_object["location"]["addressStr"]
         except KeyError:
-                location : Location | None = LocationFinder.try_get_company_address(json_object["company"], json_object["locationStr"])
+            location : Location | None = LocationFinder.try_get_company_address(json_object["company"], json_object["locationStr"])
         job_id : str = json_object["jobId"]
         applicants : int = int(json_object["applicants"])
         career_stage : str = json_object["careerStage"]
@@ -171,7 +172,7 @@ class Job:
         mode : Mode = Job.str_to_mode(json_object["mode"])
         seconds_posted_ago : int = json_object["secondsPostedAgo"]
         try:
-            time_added : datetime = json_object["timeAdded"]
+            time_added : datetime = datetime.fromtimestamp(float(json_object["timeAdded"]))
         except KeyError:
             time_added = None
         return cls(job_id, applicants, career_stage, job_name, company, payment_base, payment_freq, payment_high, location_str, mode, seconds_posted_ago,
@@ -198,7 +199,7 @@ class Job:
             "locationStr" : self.location_str,
             "mode" : Job.mode_to_str(self.mode),
             "secondsPostedAgo" : self.seconds_posted_ago,
-            "timeAdded" : str(self.time_added),
+            "timeAdded" : str(int(self.timeAdded.timestamp())),
             "locationObject" : self.location_object.to_json()
         }
     '''
@@ -226,7 +227,7 @@ class Job:
             "secondsPostedAgo" : self.seconds_posted_ago
         }
         if self.time_added:
-            sql_friendly_dict["timeAdded"] = self.timeAdded
+            sql_friendly_dict["timeAdded"] = str(int(self.timeAdded.timestamp()))
         if self.location_object:
             sql_friendly_dict["location"] = self.location_object.to_json()
         return sql_friendly_dict

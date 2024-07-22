@@ -23,7 +23,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import httpx
 import json
-from glassdoor_scraper import find_companies, scrape_cache, FoundCompany
+from glassdoor_scraper import find_companies, scrape_cache, FoundCompany, get_company_data
 from random import choice
 from auth_server import token_required
 from typing import Dict
@@ -65,92 +65,7 @@ async def run():
         raise AttributeError("Could not load company")
     print("Company Loaded: " + company)
     #gives a list of possible human looking headers, we choose one randomly
-    headers_list : list[Dict] = [
-        {
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/91.0.4472.124 Safari/537.36"
-            ),
-            "Accept-Language": "en-US,en;q=0.9",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1",
-            "Referer": "https://www.google.com/",
-            "DNT": "1"
-        },
-        {
-            "User-Agent": (
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                "AppleWebKit/605.1.15 (KHTML, like Gecko) "
-                "Version/14.1.2 Safari/605.1.15"
-            ),
-            "Accept-Language": "en-US,en;q=0.8",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1",
-            "Referer": "https://www.apple.com/",
-            "DNT": "1"
-        },
-        {
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) "
-                "Gecko/20100101 Firefox/89.0"
-            ),
-            "Accept-Language": "en-US,en;q=0.7",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1",
-            "Referer": "https://www.mozilla.org/",
-            "DNT": "1"
-        },
-        {
-            "User-Agent": (
-                "Mozilla/5.0 (X11; Linux x86_64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/90.0.4430.93 Safari/537.36"
-            ),
-            "Accept-Language": "en-US,en;q=0.9",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1",
-            "Referer": "https://www.google.com/",
-            "DNT": "1"
-        },
-        {
-            "User-Agent": (
-                "Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) "
-                "AppleWebKit/605.1.15 (KHTML, like Gecko) "
-                "Version/14.0 Mobile/15E148 Safari/604.1"
-            ),
-            "Accept-Language": "en-US,en;q=0.9",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1",
-            "Referer": "https://www.apple.com/",
-            "DNT": "1"
-        }
-    ]
-    client : httpx.Client = httpx.Client(headers=choice(headers_list), follow_redirects=True)
-    #block execution until we find the companies
-    companies : list[FoundCompany] = await find_companies(company, client)
-    #Grab the url to the company
-    company_data_url : str = companies[0]["url_reviews"]
-    print("Company Data Url: "+company_data_url)
-    #Await scraping the company data from json embeded in the html
-    company_data_full : Dict = await scrape_cache(company_data_url, client)
-    print(json.dumps(company_data_full, indent=2))
-    return jsonify({
-        "overallRating": company_data_full["ratings"]["overallRating"],
-        "businessOutlookRating": company_data_full["ratings"]["businessOutlookRating"],
-        "careerOpportunitiesRating": company_data_full["ratings"]["careerOpportunitiesRating"],
-        "ceoRating": company_data_full["ratings"]["ceoRating"],
-        "compensationAndBenefitsRating": company_data_full["ratings"]["compensationAndBenefitsRating"],
-        "cultureAndValuesRating": company_data_full["ratings"]["cultureAndValuesRating"],
-        "diversityAndInclusionRating": company_data_full["ratings"]["diversityAndInclusionRating"],
-        "seniorManagementRating": company_data_full["ratings"]["seniorManagementRating"],
-        "workLifeBalanceRating": company_data_full["ratings"]["workLifeBalanceRating"]
-    })
+    return jsonify(get_company_data(company))
 #Runs our server
 if __name__ == '__main__':
     app.run(debug=True, port=PORT)

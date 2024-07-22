@@ -44,6 +44,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
             //Send a message to contentScript to scrape pages and enter it in our db
             chrome.tabs.sendMessage(tabId, {
                 type: "NEW",
+                company: "LINKEDIN",
                 jobId: urlParameters.get("currentJobId")
             }).then(response => {
                 console.log('Message sent successfully:', response);

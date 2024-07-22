@@ -39,6 +39,7 @@ from company import Company
 from job import Job
 from user import User
 from typing import Dict
+import glassdoor_scraper
 
 #Set up our server using flask
 app = Flask(__name__)
@@ -70,7 +71,10 @@ class DatabaseServer:
             job_json : Dict = json.loads(message)
             print("========= RECIEVED JOB JSON OF =========== \n\n")
             print(json.dumps(job_json, indent=4))
-            job_id : str = job_json["jobId"]
+            company: str = job_json["company"]["companyName"]
+            if (not CompanyTable.read_company_by_id("company")):
+                print("RETRIEVING COMPANY FROM GLASSDOOR")
+                job_json["company"] = glassdoor_scraper.get_company_data(company)
             print("\n\n")
         except json.JSONDecodeError:
             print("YOUR JOB JSON OF " + message + "IS INVALID")
@@ -80,8 +84,9 @@ class DatabaseServer:
         job : Job = Job.create_with_json(job_json)
         print("RECIEVED MESSAGE TO ADD JOB WITH ID " + job_json["jobId"])
         #Call the database function to execute the insert
-        JobTable.add_job_with_foreign_keys(job, user_id)
-        return 'success', 200
+        #we complete the jobs data before returning it to the client
+        completeJob: Job = JobTable.add_job_with_foreign_keys(job, user_id)
+        return json.dumps({"job": completeJob.to_json()}), 200
     '''
     read_most_recent_job
 

@@ -1,7 +1,7 @@
 import React, { createElement } from 'react';
 import ReactDOM from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { RegisterForm, LoginForm } from '../src/tests/testLogin';
+import { RegisterForm, LoginForm } from '../src/tests/testLoginReact';
 
 const App = () => {
     return (

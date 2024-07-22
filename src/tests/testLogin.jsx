@@ -2,6 +2,7 @@ import React, { createElement } from 'react';
 import ReactDOM from 'react-dom';
 import {genSaltSync, hashSync} from 'bcryptjs';
 import {createUser} from '../content/users';
+import { User } from '../content/user';
 
 //Tests to test our methods to call the servers and the server methods themselves
 //will add fakerjs eventually
@@ -30,14 +31,17 @@ async function registerTest(){
     //we do this here as soon as possible for password safety
     const confirmPassword = password;
     //create user returns the proper user json structure with null filled values
-    const user = {
+    const firstName = "Daniel";
+    const lastName = "DeMoney";
+    const userJson = {
         email: email,
-        firstName: "Daniel",
-        lastName: "DeMoney",
+        firstName: firstName,
+        lastName: lastName,
         password: password,
         salt: salt
     }
-    const validationData = validateUserDataObject(user, confirmPassword);
+    const user = new User("", email, null, firstName, lastName, null);
+    const validationData = validateUserDataObject(userJson, confirmPassword);
     if (!validationData.isValid){
         console.log("INVALID REGISTRATION DATA " + validationData.message);
         assert(false, "INVALID REGISTRATION DATA FOR WHAT SHOULD BE A PROPER USER");
