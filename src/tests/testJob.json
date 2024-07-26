@@ -1,0 +1,24 @@
+{
+    "job": "Specification Sales",
+    "locationStr": "Irvine, CA ",
+    "secondsPostedAgo": 1814400,
+    "applicants": "100",
+    "paymentFreq": "yr",
+    "paymentBase": 90,
+    "paymentHigh": 110,
+    "mode": "Hybrid",
+    "careerStage": "Mid-Senior level",
+    "jobId": "3936196442",
+    "company": {
+        "companyName": "WOW Recruitment",
+        "businessOutlookRating": 1,
+        "careerOpportunitiesRating": 5,
+        "ceoRating": 1,
+        "compensationAndBenefitsRating": 5,
+        "cultureAndValuesRating": 5,
+        "diversityAndInclusionRating": 5,
+        "overallRating": 5,
+        "seniorManagementRating": 5,
+        "workLifeBalanceRating": 4.7
+    }
+}

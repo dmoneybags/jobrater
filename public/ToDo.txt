@@ -1,3 +1,7 @@
+7/15
+
+Put server side stuff back lol everything that needs a token can totally be client side
+
 7/2/24:
 
 Put appropriate things server-side:
@@ -10,5 +14,3 @@ Finish User code:
         NOTE: we still need to add functionality for sendMessageToAddUser
         NOTE: we still only have a placeholder url in our google auth code
     we are simply going top down
-Implement tokens:
-    part of the above task but still important

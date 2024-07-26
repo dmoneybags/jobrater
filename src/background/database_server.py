@@ -6,153 +6,350 @@ Background.js
 Listens for: a tab change event fired when the current tabs url changes
 Executes: scrapes the jobId from the url
 Sends: a message to the contentScript that we recieved a new job
-\/
-\/
+
 ContentScript.js
 Listens for: the new job event from background.js
 Executes the scraping of the linkedin and glassdoor
 Calls:
-\/
-\/
+
 database_server.py
 Listens for: requests sent on PORT 5001
 Executes the database functions to CRUD jobs
+
+TO DO:
+
+load function, can be called when a user loads the app to grab all their data if not
+initialized
 '''
 
 from flask import Flask, abort
-from database_functions import DatabaseFunctions
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import json
 from mysql.connector.errors import IntegrityError
+from auth_logic import decode_user_from_token, token_required
+from job_location_table import JobLocationTable
+from user_job_table import UserJobTable
+from user_table import UserTable
+from job_table import JobTable
+from company_table import CompanyTable
+from company import Company
+from job import Job
+from user import User
+from typing import Dict
+import glassdoor_scraper
+from helper_functions import HelperFunctions
+import daemon
+import sys
+import os
+import traceback
+import asyncio
 
 #Set up our server using flask
 app = Flask(__name__)
 #Give support for cross origin requests from our content Script
 CORS(app)
+PORT=5001
+
+CANSCRAPEGLASSDOOR: bool = False
 
 class DatabaseServer:
+    #
+    #
+    # JOB METHODS
+    #
+    #
+    '''
+    add_job
+
+    recieves the request to add a job and executes the request
+        request
+            token: str token of the users auth
+    
+    returns Response
+    '''
     @app.route('/databases/add_job', methods=['POST'])
+    @token_required
     def add_job():
-        #Load the job data from the request, it is the the form of a string
-        #so we load it into json using json.loads
+
+        async def get_company_data_async(company: str) -> Dict:
+            return await glassdoor_scraper.get_company_data(company)
+
+        token : str = request.headers.get('Authorization')
+        user : User | None = decode_user_from_token(token)
+        if not user:
+            return "NO TOKEN SENT", 401
+        user_id : str = user.user_id
         try:
-            message = request.args.get('jobJson', default="NO JOB JSON LOADED", type=str)
-            jobJson = json.loads(message)
+            message : str = request.args.get('jobJson', default="NO JOB JSON LOADED", type=str)
+            job_json : Dict = json.loads(message)
+            print("========= RECIEVED JOB JSON OF =========== \n\n")
+            print(json.dumps(job_json, indent=4))
+            company: str = job_json["company"]["companyName"]
+            if (not CompanyTable.read_company_by_id("company") and CANSCRAPEGLASSDOOR):
+                print("RETRIEVING COMPANY FROM GLASSDOOR")
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                job_json["company"] = loop.run_until_complete(get_company_data_async(company))
+            print("\n\n")
         except json.JSONDecodeError:
             print("YOUR JOB JSON OF " + message + "IS INVALID")
             #Invalid request
             return abort(403)
-        print("RECIEVED MESSAGE TO ADD JOB WITH ID " + jobJson["jobId"])
+        print(job_json)
+        job : Job = Job.create_with_json(job_json)
+        print("RECIEVED MESSAGE TO ADD JOB WITH ID " + job_json["jobId"])
         #Call the database function to execute the insert
-        try:
-            #THIS ADDS THE JOB AND COMPANY AND KEYWORDS EACH TO THEIR
-            #INDIVIDUAL TABLES
-            response_code = DatabaseFunctions.add_job(jobJson)
-            return response_code
-        except IntegrityError:
-            #its honestly ok if we try to read the same job a lot
-            #client as of now doenst need to know an error occured
-            return '', 200
+        #we complete the jobs data before returning it to the client
+        completeJob: Job = JobTable.add_job_with_foreign_keys(job, user_id)
+        return json.dumps({"job": completeJob.to_json()}), 200
+    '''
+    read_most_recent_job
+
+    reads the most recently added job from the db
+
+    args:
+        None
+    returns:
+        json representation of job
+    '''
     @app.route('/databases/read_most_recent_job', methods=['GET'])
+    @token_required
     def read_most_recent_job():
         #Call the database function to select and sort to the most recent job
-        result = DatabaseFunctions.read_most_recent_job()
-        if not result:
+        job : Job | None = JobTable.read_most_recent_job()
+        if not job:
             #Not found
-            print(1, "DB IS EMPTY")
+            print("DB IS EMPTY")
             abort(404)
         print("RETURNING RESULT")
-        return result
+        return job.to_json()
+    '''
+    read_job_by_id
+
+    recieves request to read a company by the companies str id and returns the json representation of the job 
+
+    args:
+        request
+            job_id str job id from linkedin
+    returns:
+        json representation of job
+    '''
     @app.route('/databases/read_job_by_id', methods=['GET'])
+    @token_required
     def read_job_by_id():
         #Grab the jobId from the request, it is in the form of a string
         try:
-            jobId = request.args.get('jobId', default="NO JOB ID LOADED", type=str)
+            job_id : str = request.args.get('jobId', default="NO JOB ID LOADED", type=str)
         except:
             #invalid request
             print("Your request of: " + request)
             abort(403)
-        print("JOB ID:  " + jobId)
-        result = DatabaseFunctions.read_job_by_id(jobId)
-        if not result:
+        print("JOB ID:  " + job_id)
+        job : Job | None = JobTable.read_job_by_id(job_id)
+        if not job:
             print("JOB NOT IN DB")
             abort(404)
-        return result
+        return job.to_json()
+    '''
+    update_job
+
+    recieves request to update company
+
+    args:
+        request
+            jobJson the json of the job to set the job to
+    returns:
+        response message and code
+    '''
     @app.route('/databases/update_job', methods=['POST'])
+    @token_required
     def update_job():
         #We take an argument of the whole job data in the from a json string
         try:
-            message = request.args.get('jobJson', default="NO JOB JSON LOADED", type=str)
-            jobJson = json.loads(message)
+            message : str = request.args.get('jobJson', default="NO JOB JSON LOADED", type=str)
+            job_json : Dict = json.loads(message)
+            job : Job = Job.create_with_json(job_json)
         except json.JSONDecodeError:
             print("YOUR JOB JSON OF " + request + "IS INVALID")
             #Invalid request
             return abort(403)
-        return DatabaseFunctions.update_job(jobJson)
+        JobTable.update_job(job)
+        return 'success', 200
+    '''
+    delete_job
+
+    recieves request to delete company
+
+    args:
+        request
+            job_id the id of the job to delete
+    returns:
+        response message and code
+    '''
     @app.route('/databases/delete_job', methods=['POST'])
+    @token_required
     def delete_job():
         #Get the job id from the request
         try:
-            jobId = request.args.get('jobId', default="NO JOB ID LOADED", type=str)
+            job_id : str = request.args.get('jobId', default="NO JOB ID LOADED", type=str)
         except:
             print("Request of: " + request + " is invalid")
             #Invalid request
             return abort(403)
         #run the sql code
-        return DatabaseFunctions.delete_job(jobId)
+        JobTable.delete_job_by_id(job_id)
+        return 'success', 200
+    #
+    #
+    # COMPANY METHODS
+    #
+    #
     #We only give the server an option to read companies,
     #theres no reason for us to make calls to update or delete companies yet
+    '''
+    read_company_by_name
+
+    responds to request and gets a companys data by name
+
+    args:
+        request
+            company: str company name
+    returns
+        company json
+    '''
     @app.route('/databases/read_company', methods=["GET"])
-    def read_company():
+    @token_required
+    def read_company_by_name():
         try:
-            company = request.args.get('company', default="NO COMPANY LOADED", type=str)
+            company : str = request.args.get('company', default="NO COMPANY LOADED", type=str)
         except:
             print("Request of: " + request + " is invalid")
             #Invalid request
             return abort(403)
         print("Recieved message to read company: " + company)
-        result = DatabaseFunctions.read_company_by_id(company)
-        if not result:
+        company : Company | None = CompanyTable.read_company_by_id(company)
+        if not company:
             abort(404)
-        return result
-    @app.route('/databases/get_user_by_email', methods=["GET"])
-    def get_user_by_email():
-        try:
-            email = request.args.get('email', default="NO EMAIL LOADED", type=str)
-        except:
-            print("Request of: " + request + " is invalid")
-            #Invalid request
-            return abort(403)
-        result = DatabaseFunctions.read_user_by_email(email)
-        if not result:
+        return company.to_json()
+    #
+    #
+    # USER METHODS
+    #
+    #
+    '''
+    get_user_data
+
+    responds to a request to retrive the users data from the dbs
+
+    for now just:
+        user columns
+        user jobs
+    
+    args:
+        request
+            token: JWT token that holds user id
+    returns:
+        json with user data and job data
+    '''
+    @app.route('/databases/get_user_data', methods=["GET"])
+    @token_required
+    def get_user_data():
+        token : str = request.headers.get('Authorization')
+        if not token:
+            return 'No token recieved', 401
+        user : User | None = decode_user_from_token(token)
+        if not user:
             abort(404)
-        return result
+        jobs : list[Job] = UserJobTable.get_user_jobs(user["userId"])
+        json_jobs : list[Dict] = [job.to_json() for job in jobs]
+        return jsonify({"user": user.to_json(), "jobs": json_jobs})
+    '''
+    get_user_data_by_googleId
+
+    grabs a users data using their google id instead of their token
+
+    no implementation yet
+
+    args:
+        request
+            googleId: the google id of the user as a str
+    returns:
+        json with user data and job data
+    '''
+    #Should this require token? what is the implementation
     @app.route('/databases/get_user_by_googleId', methods=["GET"])
-    def get_user_by_googleId():
+    @token_required
+    def get_user_data_by_googleId():
         try:
-            googleId = request.args.get('googleId', default="NO googleId LOADED", type=str)
+            googleId : str = request.args.get('googleId', default="NO googleId LOADED", type=str)
         except:
             print("Request of: " + request + " is invalid")
             #Invalid request
             return abort(403)
-        result = DatabaseFunctions.read_user_by_googleId(googleId)
-        if not result:
+        user : User | None = UserTable.read_user_by_googleId(googleId)
+        if not user:
             abort(404)
-        return result
-    @app.route('/databases/add_user', methods=["POST"])
-    def add_user():
+        jobs : list[Job] = UserJobTable.get_user_jobs(user["userId"])
+        json_jobs : list[Dict] = [job.to_json() for job in jobs]
+        return jsonify({"user": user.to_json(), "jobs": json_jobs})
+    '''
+    delete_user
+
+    deletes a user using the token passed in the request
+
+    args:
+        request
+            token: jwt auth token
+    returns:
+        success message or error
+    '''
+    @app.route('/databases/delete_user', methods=['POST'])
+    @token_required
+    def delete_user():
+        token : str = request.headers.get('Authorization')
+        if not token:
+            return 'No token recieved', 401
+        user : User | None = decode_user_from_token(token)
+        if not user:
+            return 'Invalid Token', 401
+        user_email : str = user.email
+        if not UserTable.read_user_by_email(user_email):
+            return jsonify({'message': 'User not in db'}), 401
+        UserTable.delete_user_by_email(user_email)
+        return 'success', 200
+    '''
+    run_as_daemon
+
+    runs our server as a daemon
+    '''
+    def run_as_daemon():
+        log_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'logs'))
+        stdout_path = os.path.join(log_dir, 'database_server.stdout')
+        stderr_path = os.path.join(log_dir, 'database_server.stderr')
+
+        #Run the app on port 5001
         try:
-            user = request.args.get('user', default="NO USER LOADED", type=str)
-            user_json = json.loads(user)
-        except:
-            print("Request of: " + request + " is invalid")
-            #Invalid request
-            return abort(403)
-        #THIS ADDS THE JOB AND COMPANY AND KEYWORDS EACH TO THEIR
-        #INDIVIDUAL TABLES
-        response_code = DatabaseFunctions.add_user(user_json)
-        return response_code
+            # Open files for stdout and stderr
+            # Set up the DaemonContext with redirected stdout and stderr
+            print("STARTING DAEMON IN " + os.getcwd())
+            with daemon.DaemonContext(
+                working_directory=os.getcwd(),
+                stdout = open(stdout_path, "w+"),
+                stderr = open(stderr_path, "w+")
+            ):
+                HelperFunctions.write_pid_to_temp_file("database_server")
+                app.run(debug=False, port=PORT)
+        except Exception as e:
+            print(e)
+            traceback.print_exc()
+        finally:
+            HelperFunctions.remove_pid_file("database_server")
 if __name__ == '__main__':
-    #Run the app on port 5001
-    app.run(debug=True, port=5001)
+    # Check for the -I argument
+    if '-i' in sys.argv:
+        # Run the script normally without daemonizing
+        print("Running in non-daemon mode")
+        app.run(debug=False, port=PORT)
+    else:
+        DatabaseServer.run_as_daemon()
