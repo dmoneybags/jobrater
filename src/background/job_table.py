@@ -113,11 +113,12 @@ class JobTable:
     def add_job_with_foreign_keys(job : Job, user_id_uuid : UUID | str) -> Job:
         user_id : str = str(user_id_uuid)
         #check that the company isn't already in our DB if it isn't then we add it
-        if not CompanyTable.read_company_by_id(job.company.name):
-            CompanyTable.add_company(job.company)
-            #just being sure we have the proper data
-            job.company = CompanyTable.read_company_by_id(job.company.company_name)
-            print("COMPANY SUCCESSFULLY ADDED")
+        if not CompanyTable.read_company_by_id(job.company.company_name):
+            if job.company.isEmpty():
+                CompanyTable.add_company(job.company)
+                #just being sure we have the proper data
+                job.company = CompanyTable.read_company_by_id(job.company.company_name)
+                print("COMPANY SUCCESSFULLY ADDED")
         else:
             print("COMPANY ALREADY IN DB")
             job.company = CompanyTable.read_company_by_id(job.company.company_name)
@@ -157,10 +158,10 @@ class JobTable:
         0 if no errors occured
     '''
     def add_job(job: Job) -> int:
+        DatabaseFunctions.MYDB.reconnect()
+        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         job_json : Dict = job.to_sql_friendly_json()
         job_add_str : str = JobTable.__get_add_job_query(job_json)
-        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
-        DatabaseFunctions.MYDB.reconnect()
         cursor.execute("USE JOBDB")
         try:
             cursor.execute(job_add_str, list(job_json.values()))
@@ -179,8 +180,8 @@ class JobTable:
         Job Object
     '''
     def read_most_recent_job() -> Job | None:
-        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
+        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         #Switch to jobDB
         cursor.execute("USE JOBDB")
         query : str = JobTable.__get_most_recent_job_query()
@@ -203,8 +204,8 @@ class JobTable:
         Job Object
     '''
     def read_job_by_id(job_id : str) -> Job | None:
-        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor(dictionary=True)
         DatabaseFunctions.MYDB.reconnect()
+        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor(dictionary=True)
         query : str = JobTable.__get_select_job_by_id_query()
         #Switch to JOBDB
         cursor.execute("USE JOBDB")
@@ -230,9 +231,9 @@ class JobTable:
         0 if no errors occured
     '''
     def update_job(job: Job) -> int:
-        job_json : Dict = job.to_sql_friendly_json()
-        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
+        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
+        job_json : Dict = job.to_sql_friendly_json()
         #Grab the specific update columns to add to our query
         update_str : str = JobTable.__get_update_str_job(job_json)
         #convert the values of our json to a list
@@ -259,8 +260,8 @@ class JobTable:
         0 if no errors occured
     '''
     def delete_job_by_id(job_id):
-        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
+        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         #Switch to our jobDb
         cursor.execute("USE JOBDB")
         query : str = JobTable.__get_delete_job_by_id_query()

@@ -26,6 +26,8 @@ set active user X
 
 import { User, UserFactory } from "./user"
 import { LocalStorageHelper } from "./localStorageHelper"
+import { validateUser } from "./userValidation"
+import { hashSync } from "bcryptjs-react"
 
 //Base url for our authentification server
 const authServer: string = 'http://localhost:5007/'
@@ -43,7 +45,7 @@ const authServer: string = 'http://localhost:5007/'
  * @param email: string email of user
  * @returns promise which resolves to the salt and rejects to null if we get a 404
  */
-const getSalt = (email: string): Promise<string | null> => {
+export const getSalt = (email: string): Promise<string> => {
     return new Promise((resolve, reject) => {
         sendGetSaltMsg(email)
         .then((salt) => {
@@ -52,9 +54,10 @@ const getSalt = (email: string): Promise<string | null> => {
         .catch((responseCode) => {
             if (responseCode === "404"){
                 console.log("Failed to get salt for email: " + email);
-                reject(null);
+                reject("");
+            } else {
+                throw new Error(`Unexpected response code: ${responseCode}`);
             }
-            throw new Error(`Unexpected response code: ${responseCode}`)
         })
     })
 }
@@ -77,6 +80,7 @@ const sendGetSaltMsg = (email: string):Promise<string> => {
         xhr.setRequestHeader('Accept', 'application/json');
         xhr.onload = function () {
             //It suceeded
+            console.log("Got response for getting salt");
             if (xhr.status === 200) {
                 //change it to json
                 var response: Record<string, any> = JSON.parse(xhr.responseText);
@@ -85,15 +89,17 @@ const sendGetSaltMsg = (email: string):Promise<string> => {
                 resolve(response["salt"]);
             } else {
                 //Didnt get a sucessful message
-                console.error('Request failed. Status:', xhr.status);
-                reject(String(xhr.status));
+                console.log('Request failed. Status:', xhr.status);
+                const strRespCode: string = String(xhr.status);
+                reject(strRespCode);
             }
         };
         //Couldnt load the http request
         xhr.onerror = function () {
             //TODO handle this error in getSalt
             console.error('Request failed. Network error');
-            reject(xhr.status);
+            const strRespCode: string = String(xhr.status);
+            reject(strRespCode);
         };
         //send our response
         xhr.send();
@@ -106,16 +112,19 @@ const sendGetSaltMsg = (email: string):Promise<string> => {
  * user, rejects string response code
  * 
  * @param {User} user the user object we are attempting to register 
+ * @param {string} password hashed pw
  * @param {string} salt the string salt we are using to hash password before sending it to server
  * @returns {Promise<string>} resolves to json with token and user_id and rejects to the string response code
  */
-const sendRegisterMsg = (user: User, salt: string):Promise<string | Record<string, any>> => {
+const sendRegisterMsg = (user: User, password: string, salt: string):Promise<string | Record<string, any>> => {
     //create a promise to resolve it asynchronously
     return new Promise((resolve, reject) => {
         //Our python program runs on port 5007 on our local server
         var xhr: XMLHttpRequest = new XMLHttpRequest();
+        const userJson = JSON.parse(JSON.stringify(user));
+        userJson["password"] = hashSync(password, salt);
         //call an http request
-        xhr.open('POST', authServer + 'register?user=' + encodeURIComponent(JSON.stringify(user)) + '&' + 'salt=' + encodeURIComponent(salt), true);
+        xhr.open('POST', authServer + 'register?user=' + encodeURIComponent(JSON.stringify(userJson)) + '&' + 'salt=' + encodeURIComponent(salt), true);
         xhr.setRequestHeader('Content-type', 'application/json');
         xhr.setRequestHeader('Accept', 'application/json');
         xhr.onload = function () {
@@ -189,12 +198,18 @@ const sendLoginMsg = (email: string, password: string):Promise<string | Record<s
  * Salt is needed to hash the password before sending the request
  * 
  * @param {User} user: the user object we are attempting to register
+ * @param {string} password: the unhashed password the user gave
+ * @param {string} confirmPassword: the confimation password
  * @param {string} salt: the string salt of the user that we add to the password before we hash
  * @returns {Promise<string>}
  */
-const register = (user: User, salt: string) => {
+export const register = (user: User, password: string, confirmPassword: string, salt: string):Promise<string> => {
+    const validationData : Record<string, any> = validateUser(user, password, confirmPassword);
+    if (!validationData.isValid){
+        throw new Error("Invalid User Data!");
+    }
     return new Promise((resolve, reject) => {
-        sendRegisterMsg(user, salt)
+        sendRegisterMsg(user, password, salt)
             .then((response) => {
                 LocalStorageHelper.setToken(response["token"]);
                 user.userId = response["userId"];
@@ -215,19 +230,23 @@ const register = (user: User, salt: string) => {
  * Resolves just "success" not too useful but sets the active user and token
  * 
  * @param {string} email: email of the user
- * @param {string} password: !IMPORTANT hashed password of user
+ * @param {string} password: unhashed user pw
+ * @param {string} salt: the salt recieved from read salt by email
  * @param {number} attempts: number of times we've attempted to login
  * @returns {Promise<string>} resolves successs rejects bad err code
  */
-const login = (email: string, password: string, attempts: number = 0) => {
+export const login = (email: string, password: string, salt: string, attempts: number = 0) => {
+    const hashedPW : string = hashSync(password, salt);
     return new Promise((resolve, reject) => {
-        sendLoginMsg(email, password)
+        sendLoginMsg(email, hashedPW)
             .then((response) => {
                 console.log(response);
                 LocalStorageHelper.setToken(response["token"])
                 //User is a string from the response
                 const userJson: Record<string, any> = response["user"];
-                const user = UserFactory.generateFromJson(userJson);
+                console.log("Recieved back user of: ");
+                console.log(userJson);
+                const user: User = UserFactory.generateFromJson(userJson);
                 LocalStorageHelper.setActiveUser(user);
                 resolve("Success");
             })
@@ -242,11 +261,11 @@ const login = (email: string, password: string, attempts: number = 0) => {
 //Overriding the xml open function to add our auth token to every request
 (function() {
     const originalOpen = XMLHttpRequest.prototype.open;
-    const authToken = LocalStorageHelper.getToken();
-
+    
     XMLHttpRequest.prototype.open = function(method: string, url: string, async?: boolean, user?: string, password?: string) {
+        const authToken = LocalStorageHelper.getToken();
         this.addEventListener('readystatechange', function() {
-            if (this.readyState === XMLHttpRequest.OPENED) {
+            if (this.readyState === XMLHttpRequest.OPENED && authToken) {
                 this.setRequestHeader('Authorization', authToken);
             }
         });

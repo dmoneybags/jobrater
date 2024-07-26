@@ -44,7 +44,6 @@ export class DatabaseCalls{
                     console.log("Recieved the company from the db");
                     resolve(true);
                 } else {
-                    console.log("Couldn't find the company in our database, scraping glassdoor");
                     resolve(false);
                 }
             };
@@ -67,6 +66,8 @@ export class DatabaseCalls{
      */
     static sendMessageToAddJob = (job: Job):Promise<Record<string, any>> => {
         const jobJson: Record<string, any> = job.toJson();
+        console.log("Sending message to add job");
+        console.log(jobJson);
         //create a promise to resolve it asynchronously
         return new Promise((resolve, reject) => {
             //Our database program runs on port 5001 on our local server
@@ -83,14 +84,14 @@ export class DatabaseCalls{
                     resolve(responseJson);
                 } else {
                     //Didnt get a sucessful message
-                    console.error('Request failed. Status:', xhr.status);
-                    reject(xhr.status);
+                    console.log('Request failed. Status:', xhr.status);
+                    reject(String(xhr.status));
                 }
             };
             //Couldnt load the http request
             xhr.onerror = function () {
                 console.error('Request failed. Network error');
-                reject(xhr.statusText);
+                reject(String(xhr.status));
             };
             //send our response
             xhr.send();

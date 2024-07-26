@@ -6,14 +6,12 @@ Background.js
 Listens for: a tab change event fired when the current tabs url changes
 Executes: scrapes the jobId from the url
 Sends: a message to the contentScript that we recieved a new job
-\/
-\/
+
 ContentScript.js
 Listens for: the new job event from background.js
 Executes the scraping of the linkedin and glassdoor
 Calls:
-\/
-\/
+
 database_server.py
 Listens for: requests sent on PORT 5001
 Executes the database functions to CRUD jobs
@@ -40,11 +38,20 @@ from job import Job
 from user import User
 from typing import Dict
 import glassdoor_scraper
+from helper_functions import HelperFunctions
+import daemon
+import sys
+import os
+import traceback
+import asyncio
 
 #Set up our server using flask
 app = Flask(__name__)
 #Give support for cross origin requests from our content Script
 CORS(app)
+PORT=5001
+
+CANSCRAPEGLASSDOOR: bool = False
 
 class DatabaseServer:
     #
@@ -61,20 +68,29 @@ class DatabaseServer:
     
     returns Response
     '''
-    @token_required
     @app.route('/databases/add_job', methods=['POST'])
+    @token_required
     def add_job():
+
+        async def get_company_data_async(company: str) -> Dict:
+            return await glassdoor_scraper.get_company_data(company)
+
         token : str = request.headers.get('Authorization')
-        user_id : str = decode_user_from_token(token).user_id
+        user : User | None = decode_user_from_token(token)
+        if not user:
+            return "NO TOKEN SENT", 401
+        user_id : str = user.user_id
         try:
             message : str = request.args.get('jobJson', default="NO JOB JSON LOADED", type=str)
             job_json : Dict = json.loads(message)
             print("========= RECIEVED JOB JSON OF =========== \n\n")
             print(json.dumps(job_json, indent=4))
             company: str = job_json["company"]["companyName"]
-            if (not CompanyTable.read_company_by_id("company")):
+            if (not CompanyTable.read_company_by_id("company") and CANSCRAPEGLASSDOOR):
                 print("RETRIEVING COMPANY FROM GLASSDOOR")
-                job_json["company"] = glassdoor_scraper.get_company_data(company)
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                job_json["company"] = loop.run_until_complete(get_company_data_async(company))
             print("\n\n")
         except json.JSONDecodeError:
             print("YOUR JOB JSON OF " + message + "IS INVALID")
@@ -97,8 +113,8 @@ class DatabaseServer:
     returns:
         json representation of job
     '''
-    @token_required
     @app.route('/databases/read_most_recent_job', methods=['GET'])
+    @token_required
     def read_most_recent_job():
         #Call the database function to select and sort to the most recent job
         job : Job | None = JobTable.read_most_recent_job()
@@ -119,8 +135,8 @@ class DatabaseServer:
     returns:
         json representation of job
     '''
-    @token_required
     @app.route('/databases/read_job_by_id', methods=['GET'])
+    @token_required
     def read_job_by_id():
         #Grab the jobId from the request, it is in the form of a string
         try:
@@ -146,8 +162,8 @@ class DatabaseServer:
     returns:
         response message and code
     '''
-    @token_required
     @app.route('/databases/update_job', methods=['POST'])
+    @token_required
     def update_job():
         #We take an argument of the whole job data in the from a json string
         try:
@@ -171,8 +187,8 @@ class DatabaseServer:
     returns:
         response message and code
     '''
-    @token_required
     @app.route('/databases/delete_job', methods=['POST'])
+    @token_required
     def delete_job():
         #Get the job id from the request
         try:
@@ -202,8 +218,8 @@ class DatabaseServer:
     returns
         company json
     '''
-    @token_required
     @app.route('/databases/read_company', methods=["GET"])
+    @token_required
     def read_company_by_name():
         try:
             company : str = request.args.get('company', default="NO COMPANY LOADED", type=str)
@@ -236,8 +252,8 @@ class DatabaseServer:
     returns:
         json with user data and job data
     '''
-    @token_required
     @app.route('/databases/get_user_data', methods=["GET"])
+    @token_required
     def get_user_data():
         token : str = request.headers.get('Authorization')
         if not token:
@@ -263,6 +279,7 @@ class DatabaseServer:
     '''
     #Should this require token? what is the implementation
     @app.route('/databases/get_user_by_googleId', methods=["GET"])
+    @token_required
     def get_user_data_by_googleId():
         try:
             googleId : str = request.args.get('googleId', default="NO googleId LOADED", type=str)
@@ -287,8 +304,8 @@ class DatabaseServer:
     returns:
         success message or error
     '''
-    @token_required
     @app.route('/databases/delete_user', methods=['POST'])
+    @token_required
     def delete_user():
         token : str = request.headers.get('Authorization')
         if not token:
@@ -301,6 +318,38 @@ class DatabaseServer:
             return jsonify({'message': 'User not in db'}), 401
         UserTable.delete_user_by_email(user_email)
         return 'success', 200
+    '''
+    run_as_daemon
+
+    runs our server as a daemon
+    '''
+    def run_as_daemon():
+        log_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'logs'))
+        stdout_path = os.path.join(log_dir, 'database_server.stdout')
+        stderr_path = os.path.join(log_dir, 'database_server.stderr')
+
+        #Run the app on port 5001
+        try:
+            # Open files for stdout and stderr
+            # Set up the DaemonContext with redirected stdout and stderr
+            print("STARTING DAEMON IN " + os.getcwd())
+            with daemon.DaemonContext(
+                working_directory=os.getcwd(),
+                stdout = open(stdout_path, "w+"),
+                stderr = open(stderr_path, "w+")
+            ):
+                HelperFunctions.write_pid_to_temp_file("database_server")
+                app.run(debug=False, port=PORT)
+        except Exception as e:
+            print(e)
+            traceback.print_exc()
+        finally:
+            HelperFunctions.remove_pid_file("database_server")
 if __name__ == '__main__':
-    #Run the app on port 5001
-    app.run(debug=True, port=5001)
+    # Check for the -I argument
+    if '-i' in sys.argv:
+        # Run the script normally without daemonizing
+        print("Running in non-daemon mode")
+        app.run(debug=False, port=PORT)
+    else:
+        DatabaseServer.run_as_daemon()

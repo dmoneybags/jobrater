@@ -51,8 +51,8 @@ class UserLocationTable:
         0
     '''
     def add_user_location(location: Location, user_id: UUID | str) -> int:
-        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
+        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         #Switch to our jobDb
         cursor.execute("USE JOBDB")
         print("ADDING USER LOCATION")
@@ -80,8 +80,8 @@ class UserLocationTable:
         location object or none
     '''
     def try_read_location(user_id : UUID | str) -> Location | None:
-        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
+        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         #Switch to our jobDb
         cursor.execute("USE JOBDB")
         print("READING USER LOCATION OBJECT")
@@ -102,8 +102,8 @@ class UserLocationTable:
         0
     '''
     def delete_location(user_id : UUID | str) -> int:
-        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
+        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         #Switch to our jobDb
         cursor.execute("USE JOBDB")
         print("DELETING USER LOCATION OBJECT")

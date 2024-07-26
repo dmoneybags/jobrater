@@ -8,19 +8,30 @@ import { json } from "stream/consumers";
  * 
  * Simple enum to represent the payment frequencies in a job
  */
-enum PaymentFrequency {
-    hr = 1,
-    yr,
+export class PaymentFrequency {
+    str: string
+    constructor(paymentStr: string){
+        const paymentStrs = ["hr", "yr"];
+        if (!paymentStrs.includes(paymentStr)){
+            throw new Error("Invalid payment Str");
+        }
+        this.str = paymentStr;
+    }
 }
 /**
  * Mode
  * 
  * Simple enum to represent the payment WFM policy in a job
  */
-enum Mode {
-    remote = 1,
-    hybrid,
-    onsite,
+export class Mode {
+    str: string
+    constructor(modeStr: string){
+        const modes = ["Remote", "Hybrid", "On-site"]
+        if (!modes.includes(modeStr)){
+            throw new Error("Invalid Mode Str");
+        }
+        this.str = modeStr
+    }
 }
 
 /**
@@ -58,10 +69,10 @@ export class Job {
     locationStr: string | null;
     mode: Mode;
     secondsPostedAgo: number;
-    timeAdded: Date;
+    timeAdded: Date | null;
     location: LocationObject | null;
     constructor(jobId : string, applicants: number, careerStage: string | null, jobName: string, company: Company, paymentBase: number | null,
-        paymentFreq: PaymentFrequency | null, paymentHigh: number | null, locationStr: string | null, mode: Mode, secondsPostedAgo: number, timeAdded: Date, location: LocationObject | null){
+        paymentFreq: PaymentFrequency | null, paymentHigh: number | null, locationStr: string | null, mode: Mode, secondsPostedAgo: number, timeAdded: Date | null, location: LocationObject | null){
         this.jobId = jobId;
         this.applicants = applicants;
         this.careerStage = careerStage;
@@ -76,48 +87,23 @@ export class Job {
         this.timeAdded = timeAdded;
         this.location = location;
     }
-    /**
-     * strToPaymentFreq
-     * 
-     * turns a string into a payment frequency object, raises a typeError if invalid str is passed
-     * @param {string} paymentFreqStr 
-     * @returns {PaymentFrequency}
-     */
-    static strToPaymentFreq(paymentFreqStr: string): PaymentFrequency {
-        if (paymentFreqStr === "hr"){
-            return PaymentFrequency.hr
-        } else if (paymentFreqStr === "yr"){
-            return PaymentFrequency.yr
-        }
-        throw new TypeError("Invalid paymentFreqStr Passed " + paymentFreqStr);
-    }
-    /**
-     * strToMode
-     * 
-     * turns a string to a mode object
-     * 
-     * @param modeStr 
-     * @returns {Mode}
-     */
-    static strToMode(modeStr: string): Mode {
-        const modeStrs: string[] = ["Remote", "Hybrid", "On-site"]
-        return Mode[modeStrs.find((element) => element === modeStr) ?? "Remote"];
-    }
     toJson() {
         return {
             jobId: this.jobId,
             applicants: this.applicants,
             careerStage: this.careerStage,
             jobName: this.jobName,
-            company: JSON.stringify(this.company),
+            company: this.company,
             //paymentFreq is passed below
             paymentBase: this.paymentBase,
             paymentHigh: this.paymentHigh,
+            paymentFreq: this.paymentFreq?.str,
             locationStr: this.locationStr,
             //mode is passed below
+            mode: this.mode.str,
             secondsPostedAgo: this.secondsPostedAgo,
-            timeAdded: Math.floor(this.timeAdded.getTime() / 1000),
-            location: JSON.stringify(this.location)
+            timeAdded: Math.floor((this.timeAdded ?? new Date()).getTime() / 1000),
+            location: this.location
         }
     }
 }
@@ -142,11 +128,11 @@ export class JobFactory {
         } catch {TypeError} {
             company = CompanyFactory.generateEmptyCompany(jsonObject["company"]["companyName"])
         }
-        const paymentFreq: PaymentFrequency | null = jsonObject["paymentFreq"] ? Job.strToPaymentFreq(jsonObject["paymentFreq"]) : null;
+        const paymentFreq: PaymentFrequency | null = jsonObject["paymentFreq"] ? PaymentFrequency[jsonObject["paymentFreq"]] : null;
         const paymentBase: number | null = jsonObject["paymentBase"];
         const paymentHigh: number | null = jsonObject["paymentHigh"];
         const locationStr: string | null = jsonObject["locationStr"];
-        const mode: Mode = Job.strToMode(jsonObject["mode"]);
+        const mode: Mode = new Mode(jsonObject["mode"]);
         const secondsPostedAgo: number = jsonObject["secondsPostedAgo"];
         //
         const timeAdded: Date = new Date(Number(jsonObject["timeAdded"] * 1000));

@@ -77,6 +77,7 @@ class User:
         except KeyError as e:
             try:
                 print("Loading traditional user")
+                print(sql_query_row["UserId"])
                 user_id = UUID(sql_query_row["UserId"])
                 email = sql_query_row["Email"]
                 first_name = sql_query_row["FirstName"]
@@ -119,7 +120,11 @@ class User:
                 raise KeyError
             print("Loading google user")
             try:
-                user_id = UUID(json_object["userId"])
+                #hacky
+                try:
+                    user_id = UUID(json_object["userId"])
+                except ValueError:
+                    user_id = ""
                 email = json_object["email"]
                 first_name = json_object["firstName"]
                 last_name = json_object["lastName"]
@@ -131,19 +136,29 @@ class User:
         except KeyError as e:
             try:
                 print("Loading traditional user")
-                user_id = UUID(json_object["userId"])
+                #hacky
+                try:
+                    user_id = UUID(json_object["userId"])
+                except ValueError:
+                    user_id = ""
                 email = json_object["email"]
                 first_name = json_object["firstName"]
                 last_name = json_object["lastName"]
-                if "location" in list(json_object.keys()):
+                if "location" in list(json_object.keys()) and json_object["location"] is not None and json_object["location"] != "null":
+                    print("Attempting to load location")
                     location = Location.try_get_location_from_json(json_object["location"])
-                password = json_object["password"]
-                salt = json_object["salt"]
+                password = json_object["password"] if "password" in json_object else None
+                salt = json_object["salt"] if "salt" in json_object else None
+                print("Loaded traditional user")
                 return cls(user_id, email, password, google_id, first_name, last_name, location, salt)
             except KeyError as e:
                 print("FAILED TO LOAD")
                 print(json.dumps(json_object))
                 raise UserInvalidData(json.dumps(json_object))
+            except Exception as e:
+                print("FAILED TO LOAD WITH MISCELLANEOUS EXCEPTION")
+                print(e)
+                raise e
     '''
     to_json
 

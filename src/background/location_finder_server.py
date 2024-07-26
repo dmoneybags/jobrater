@@ -17,6 +17,8 @@ from location_finder import LocationFinder
 from typing import Dict
 from location_finder import LocationFinder
 from location import Location
+import os
+from helper_functions import HelperFunctions
 
 app : Flask = Flask(__name__)
 
@@ -52,4 +54,5 @@ def try_request_company_address():
     else:
         return 'No results found', 404
 if __name__ == '__main__':
+    HelperFunctions.write_pid_to_temp_file("location_finder")
     app.run(port=PORT)

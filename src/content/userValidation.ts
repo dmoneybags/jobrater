@@ -8,19 +8,10 @@ SignUp.html: prompts user to sign up
 
 userValidation.js: ensures data passed to sign up and login functions is valid
 
-structure of userDataObject:
-
-VERY BASIC ALPHA STRUCTURE
-user {
-    UserID VARCHAR(36) NOT NULL,
-    Email VARCHAR(255) NOT NULL UNIQUE,
-    Password VARCHAR(255),
-    Google_Id VARCHAR(255) UNIQUE,
-    Name VARCHAR(255),
-}
-
 GROUND TRUTH, SQL DB and USER_COLUMNS IN database_functions.py
 */
+import { User } from "./user"
+
 const MINIMUMPASSWORDLENGTH: number = 8;
 
 /**
@@ -68,7 +59,8 @@ const getStrengthValues = (password: string): boolean[]  => {
  * 
  * returns json descibing the validity
  * 
- * @param {Record<string, any>} userJson 
+ * @param {user} user 
+ * @param {string} password
  * @param {string} retypedPassword 
  * @returns {Record<string, any>} 
  * {
@@ -77,22 +69,22 @@ const getStrengthValues = (password: string): boolean[]  => {
  *  code: code that corresponds to that invalid reason
  * }
  */
-const validateUserJson = (userJson: Record<string, any>, retypedPassword: string) => {
-    if (!validateEmail(userJson["email"])){
+export const validateUser = (user: User, password: string, retypedPassword: string) => {
+    if (!validateEmail(user.email)){
         return {
             isValid: false,
             message: "invalid email",
             code: 1
         }
     }
-    if (getStrengthValues(userJson.password).includes(false)){
+    if (getStrengthValues(password).includes(false)){
         return {
             isValid: false,
             message: "weak password",
             code: 2
         }
     }
-    if (userJson["password"] !== retypedPassword){
+    if (password !== retypedPassword){
         return {
             isValid: false,
             message: "passwords don't match",

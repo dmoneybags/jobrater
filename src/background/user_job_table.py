@@ -69,8 +69,8 @@ class UserJobTable:
     def add_user_job(user_id_uuid : UUID | str, job_id : str) -> int:
         user_id : str = str(user_id_uuid)
         print("ADDING USER JOB WITH USER ID " + user_id + " AND JOB ID OF " + job_id)
-        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
+        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         #Switch to our jobDb
         cursor.execute("USE JOBDB")
         query : str = UserJobTable.__get_add_user_job_query()
@@ -100,9 +100,9 @@ class UserJobTable:
         0 if no error occured
     '''
     def delete_user_job(user_id_uuid : UUID | str, job_id : str) -> int:
-        user_id : str = str(user_id_uuid)
-        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
+        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
+        user_id : str = str(user_id_uuid)
         #Switch to our jobDb
         cursor.execute("USE JOBDB")
         query : str = UserJobTable.__get_delete_user_job_query()
@@ -123,9 +123,9 @@ class UserJobTable:
         list of all jobs as job objectw
     '''
     def get_user_jobs(user_id_uuid: UUID | str) -> list[Job]:
-        user_id : str = str(user_id_uuid)
-        cursor: MySQLCursor = DatabaseFunctions.MYDB.cursor(dictionary=True)
         DatabaseFunctions.MYDB.reconnect()
+        cursor: MySQLCursor = DatabaseFunctions.MYDB.cursor(dictionary=True)
+        user_id : str = str(user_id_uuid)
         #Switch to our jobDb
         cursor.execute("USE JOBDB")
         query : str = UserJobTable.__get_read_user_jobs_query()

@@ -57,9 +57,17 @@ export class CompanyFactory {
      */
     static generateFromJson(json_object: Record<string, any>): Company{
         if (typeof json_object !== "object"){throw new TypeError("type of " + String(typeof json_object) + " is invalid json");}
-        return new Company(json_object["companyName"], json_object["businessOutlookRating"], json_object["careerOpportunitesRating"],
-            json_object["ceoRating"], json_object["compensationAndBenefitsRating"], json_object["cultureAndValuesRating"], json_object["diversityAndInclusionRating"],
-            json_object["seniorManagementRating"], json_object["workLifeBalanceRating"], json_object["overallRating"]
+        return new Company(
+            json_object["companyName"], 
+            json_object["businessOutlookRating"], 
+            json_object["careerOpportunitesRating"],
+            json_object["ceoRating"], 
+            json_object["compensationAndBenefitsRating"], 
+            json_object["cultureAndValuesRating"], 
+            json_object["diversityAndInclusionRating"],
+            json_object["seniorManagementRating"], 
+            json_object["workLifeBalanceRating"], 
+            json_object["overallRating"]
         )
     }
     /**

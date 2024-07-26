@@ -29,7 +29,6 @@ export class LinkedInScrapingFunctions {
         }
         const infoBoxText: string = (infoBox.textContent ?? "").trim();
         const infoBoxContents: string[] = infoBoxText.split("\n");
-
         const modes: string[] = ["Remote", "Hybrid", "On-site"];
         const careerStages: string[] = ["Associate", "Entry level", "Mid-Senior level", "Executive", "Director", ]
         for (let element of infoBoxContents){

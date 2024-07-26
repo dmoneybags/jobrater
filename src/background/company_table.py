@@ -79,8 +79,8 @@ class CompanyTable:
         0 if no errors occured
     '''
     def add_company(company : Company) -> int:
-        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
+        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         cursor.execute("USE JOBDB")
         company_json : Dict = company.to_json()
         company_add_str : str = CompanyTable.__get_company_add_query(company_json)
@@ -100,10 +100,10 @@ class CompanyTable:
         Company object if found or None
     '''
     def read_company_by_id(company_name : str) -> Company | None:
-        query : str = CompanyTable.__get_read_company_by_name_query()
         #put in try except, return custom error if doesn't work
-        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor(dictionary=True)
         DatabaseFunctions.MYDB.reconnect()
+        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor(dictionary=True)
+        query : str = CompanyTable.__get_read_company_by_name_query()
         cursor.execute("USE JOBDB")
         cursor.execute(query, (company_name,))
         result : Dict[str, RowItemType] = cursor.fetchone()
@@ -124,9 +124,9 @@ class CompanyTable:
         0 if no errors occurred
     '''
     def update_company(company : Company) -> int:
-        company_json : Dict = company.to_json()
-        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
+        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
+        company_json : Dict = company.to_json()
         print("RECIEVED MESSAGE TO UPDATE Company WITH ID " + company_json["companyName"])
         #Grab the specific update columns to add to our query
         update : str = CompanyTable.__get_update_str_company(company_json)
@@ -156,8 +156,8 @@ class CompanyTable:
         0 if no errors occurred
     '''
     def delete_company_by_name(company_name : str) -> int:
-        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
+        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         #Switch to our jobDb
         cursor.execute("USE JOBDB")
         query : str = CompanyTable.__get_delete_company_by_name_query()

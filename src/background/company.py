@@ -161,7 +161,7 @@ class Company:
         Company object or None
     '''
     @classmethod
-    def try_create_with_json(cls, request_json: Dict) -> Optional['Company']:
+    def try_create_with_json(cls, request_json: Dict) -> 'Company':
         company_name : str
         business_outlook_rating : Decimal 
         career_opportunities_rating : Decimal
@@ -186,7 +186,7 @@ class Company:
             return cls(company_name, business_outlook_rating, career_opportunities_rating, ceo_rating, compensation_and_benefits_rating , culture_and_values_rating, diversity_and_inclusion_rating,
                        senior_management_rating, work_life_balance_rating, overall_rating)
         except KeyError:
-            return None
+            return cls(company_name, 0, 0, 0, 0 , 0, 0, 0, 0, 0)
     '''
     to_json
 
@@ -210,3 +210,19 @@ class Company:
             "workLifeBalanceRating" : str(self.work_life_balance_rating),
             "overallRating" : str(self.overall_rating)
         }
+    '''
+    isEmpty
+
+    returns whether or not a company object is empty
+
+    args:
+        self
+    returns:
+        isEmpty: bool whether or not its empty
+    '''
+    def isEmpty(self):
+        values: list[Decimal] = [self.business_outlook_rating, self.career_opportunities_rating, self.ceo_rating, self.compensation_and_benefits_rating, self.culture_and_values_rating, self.diversity_and_inclusion_rating, self.senior_management_rating, self.work_life_balance_rating]
+        try:
+            return sum(values) == 0
+        except TypeError:
+            return True

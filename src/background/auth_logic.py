@@ -28,24 +28,32 @@ def token_required(f: Callable) -> Callable:
     @wraps(f)
     def decorated(*args, **kwargs)  -> Tuple[Response, int]:
         if 'Authorization' in request.headers:
-            token: str = request.headers['Authorization'].split(" ")[1]  # Extract token from header
-
+            token: str = request.headers['Authorization']
+            print("Token found of ")
+            print(token)
             if not token:
+                print("token not found in headers")
                 return jsonify({'message': 'Token is missing!'}), 401
+        else:
+            print("Authorization not found in headers")
+            return jsonify({'message': 'Token is missing!'}), 401
 
         try:
             user : User | None = decode_user_from_token(token)
-            if not user:
+            print("Loaded user of ")
+            print(user)
+            if user is None:
                 #CONVERSATION:
                 #An old cached token could cause this and server didn't really error. if for some reason read user by email errored
                 #it would return 500 but I think 401 is correct error
+                print("Couldn't decode user, returning 401")
                 return jsonify({'message': 'User not found!'}), 401
         except jwt.ExpiredSignatureError:
             return jsonify({'message': 'Token has expired!'}), 401
         except jwt.InvalidTokenError:
             return jsonify({'message': 'Token is invalid!'}), 401
 
-        return f(user, *args, **kwargs)
+        return f(*args, **kwargs)
 
     return decorated
 '''
@@ -59,10 +67,11 @@ returns:
     user from token or none if token is invalid
 '''
 def decode_user_from_token(token : str) -> User | None:
-    print("DECODING TOKEN OF: " + token)
+    print("DECODING TOKEN OF: ")
+    print(token)
     try:
         # Decode the JWT
-        payload : Dict[str : any] = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        payload : Dict[str, any] = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
         print(payload)
         # Extract user information
         user_email : str = payload.get("email")

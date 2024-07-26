@@ -55,7 +55,7 @@ class JobLocationTable:
     '''
     def get_and_add_location_for_job(job: Job) -> Location:
         #we do sql_friendly here because we dont need all foreign key data
-        job_json : Dict = job.to_sql_friendly_json()
+        job_json : Dict = job.to_json()
         #Queires the google places api
         location : Location | None = LocationFinder.try_get_company_address(job_json["company"]["companyName"], job_json["locationStr"])
         if not location:
@@ -74,8 +74,8 @@ class JobLocationTable:
         0 if no error occured
     '''
     def add_job_location(location : Location, job : Job) -> int:
-        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
+        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         #Switch to our jobDb
         cursor.execute("USE JOBDB")
         print("ADDING JOB LOCATION")
@@ -110,8 +110,8 @@ class JobLocationTable:
         location object or none if nothing was found
     '''
     def try_read_location(company : str, location_str : str) -> Location | None:
-        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         DatabaseFunctions.MYDB.reconnect()
+        cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         #Switch to our jobDb
         cursor.execute("USE JOBDB")
         print("READING LOCATION OBJECT")

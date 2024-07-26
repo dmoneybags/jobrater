@@ -48,7 +48,7 @@ export class LocationObjectFactory {
      * @returns {LocationObject}
      */
     static generateLocationFromJson(json_object:Record<string, any>): LocationObject {
-        if (typeof json_object["addressStr"] !== "string"){throw new TypeError("Invalid data passed to contructor: " + json_object)}
+        if (json_object["addressStr"] && typeof json_object["addressStr"] !== "string"){throw new TypeError("Invalid data passed to contructor: " + json_object)}
         const addressStr: string = json_object["addressStr"];
         const city: string = json_object["city"];
         const zipCode: string = json_object["zipCode"];

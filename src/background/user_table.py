@@ -74,13 +74,14 @@ class UserTable:
         User with data from sql query
     '''
     def read_user_by_email(email: str) -> User | None:
-        cursor: MySQLCursor = DatabaseFunctions.MYDB.cursor(dictionary=True)
         DatabaseFunctions.MYDB.reconnect()
+        cursor: MySQLCursor = DatabaseFunctions.MYDB.cursor(dictionary=True)
         #Switch to our jobDb
         cursor.execute("USE JOBDB")
         query: str = UserTable.__get_read_user_by_email_query()
         cursor.execute(query, (email,))
         result: (Dict[str, RowItemType]) = cursor.fetchone()
+        cursor.close()
         if not result:
             return None
         print("READ USER WITH EMAIL " + email + " GOT "+ str(result))
@@ -94,13 +95,14 @@ class UserTable:
         User object with data from looking up google id in our db
     '''
     def read_user_by_googleId(googleId: str) -> User:
-        cursor: MySQLCursor = DatabaseFunctions.MYDB.cursor(dictionary=True)
         DatabaseFunctions.MYDB.reconnect()
+        cursor: MySQLCursor = DatabaseFunctions.MYDB.cursor(dictionary=True)
         #Switch to our jobDb
         cursor.execute("USE JOBDB")
         query : str = UserTable.__get_read_user_by_googleId_query()
         cursor.execute(query, (googleId,))
         result : (Dict[str, RowItemType]) = cursor.fetchone()
+        cursor.close()
         return User.create_with_sql_row(result)
     '''
     add_user
@@ -111,8 +113,8 @@ class UserTable:
         int, 0 if all went well
     '''
     def add_user(user: User) -> int:
-        cursor: MySQLCursor = DatabaseFunctions.MYDB.cursor(dictionary=True)
         DatabaseFunctions.MYDB.reconnect()
+        cursor: MySQLCursor = DatabaseFunctions.MYDB.cursor(dictionary=True)
         #Switch to our jobDb
         cursor.execute("USE JOBDB")
         user_json : Dict = user.to_json()
@@ -142,8 +144,8 @@ class UserTable:
         int, 0 if all went well
     '''
     def delete_user_by_email(email: str) -> int:
-        cursor: MySQLCursor = DatabaseFunctions.MYDB.cursor(dictionary=True)
         DatabaseFunctions.MYDB.reconnect()
+        cursor: MySQLCursor = DatabaseFunctions.MYDB.cursor(dictionary=True)
         #Switch to our jobDb
         cursor.execute("USE JOBDB")
         query : str = UserTable.__get_delete_user_by_email_query()
