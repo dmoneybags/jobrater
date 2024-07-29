@@ -50,10 +50,13 @@ class UserJobTable:
     '''
     def __get_read_user_jobs_query() -> str:
         return f"""
-        SELECT Job.*
-        FROM Job
-        JOIN UserJob ON Job.JobId = UserJob.JobId
-        WHERE UserJob.UserId = %s;
+        SELECT *
+        FROM UserJob
+        JOIN Job ON UserJob.JobId = Job.JobId
+        JOIN Company ON Job.Company = Company.CompanyName
+        LEFT JOIN JobLocation ON Job.JobId = JobLocation.JobIdFK
+        WHERE UserJob.UserId = %s
+        ORDER BY Job.TimeAdded DESC;
         """
     '''
     add_user_job
@@ -120,7 +123,7 @@ class UserJobTable:
     args:
         user_id the UUID user id
     returns
-        list of all jobs as job objectw
+        list of all jobs as job object
     '''
     def get_user_jobs(user_id_uuid: UUID | str) -> list[Job]:
         DatabaseFunctions.MYDB.reconnect()

@@ -4,6 +4,7 @@ import { login, register, getSalt } from '../content/auth';
 import { User } from '../content/user';
 import { LocalStorageHelper } from '../content/localStorageHelper'
 import { genSaltSync } from 'bcryptjs-react';
+import { MockObjects } from './__mocks__/objects';
 
 describe("Auth.ts file tests", () => {
   beforeAll(() => {
@@ -14,7 +15,7 @@ describe("Auth.ts file tests", () => {
     return expect(getSalt("dandemoney@gmail")).rejects.toMatch("");
   })
   it("Tests that we can properly register a user", () => {
-    const mockUser : User = new User("_", "dandemoney@gmail.com", null, "Daniel", "DeMoney", null);
+    const mockUser : User = MockObjects.dandemoney_user;
     return expect(register(mockUser, "Xdfgh1012#", "Xdfgh1012#", genSaltSync())).resolves.toMatch("Success");
   })
   it("Tests that we can login the user we just registered", async () => {
@@ -30,7 +31,7 @@ describe("Auth.ts file tests", () => {
     })
   })
   it("Tests that we cannot register a duplicate user", () => {
-    const mockUser : User = new User("_", "dandemoney@gmail.com", null, "Daniel", "DeMoney", null);
+    const mockUser : User = MockObjects.dandemoney_user;
     return expect(register(mockUser, "Xdfgh1012#", "Xdfgh1012#", genSaltSync())).rejects.toBe("401");
   })
 })

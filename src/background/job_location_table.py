@@ -23,7 +23,7 @@ class JobLocationTable:
         query str
     '''
     def __get_add_location_query(location_json : Dict) -> str:
-        cols : list[str] = ["queryStr", "jobId"]
+        cols : list[str] = ["queryStr", "jobIdFK"]
         cols.extend(list(location_json.keys()))
         col_str : str = ", ".join(cols)
         vals : str = ", ".join(["%s"] * len(cols))
@@ -95,7 +95,7 @@ class JobLocationTable:
         except IntegrityError:
             cursor.close()
             print("Job location already in db")
-        print(f"ADDED JOB")
+        print(f"ADDED JOB LOCATION")
         cursor.close()
         return 0
     '''

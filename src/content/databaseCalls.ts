@@ -107,13 +107,13 @@ export class DatabaseCalls{
     static getUserData = (): Promise<Record<string, any>> => {
         return new Promise((resolve, reject) => {
             const xhr: XMLHttpRequest = new XMLHttpRequest();
-            xhr.open('POST', `${DATABASESERVER}databases/get_user_data`, true);
+            xhr.open('GET', `${DATABASESERVER}databases/get_user_data`, true);
             xhr.onload = () => {
                 if (xhr.status === 200) {
                     try {
                         const response: Record<string, any> = JSON.parse(xhr.responseText);
                         console.log(`Read user data of ${xhr.responseText}`);
-                        const jsonJobs: Record<string, any>[] = JSON.parse(response["jobs"]);
+                        const jsonJobs: Record<string, any>[] = response["jobs"];
                         const jobs : Job[] = jsonJobs.map((job) => JobFactory.generateFromJson(job));
                         resolve({
                             user: UserFactory.generateFromJson(response["user"]),
@@ -121,6 +121,7 @@ export class DatabaseCalls{
                         });
                     } catch (error) {
                         console.error('Error parsing JSON response', error);
+                        console.log(xhr.responseText);
                         reject(new Error('Invalid JSON response'));
                     }
                 } else if (xhr.status === 404) {

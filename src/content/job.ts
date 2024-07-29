@@ -118,6 +118,8 @@ export class JobFactory {
     * @returns {Job}
     */
     static generateFromJson(jsonObject: Record<string, any>):Job{
+        console.log("Generating job with json of")
+        console.log(jsonObject);
         const jobId: string = jsonObject["jobId"];
         const applicants: number = jsonObject["applicants"];
         const careerStage: string = jsonObject["careerStage"];
@@ -125,10 +127,12 @@ export class JobFactory {
         var company: Company
         try {
             company = CompanyFactory.generateFromJson(jsonObject["company"])
-        } catch {TypeError} {
+        } catch (error) {
+            console.log("Could not generate company with error");
+            console.log(error);
             company = CompanyFactory.generateEmptyCompany(jsonObject["company"]["companyName"])
         }
-        const paymentFreq: PaymentFrequency | null = jsonObject["paymentFreq"] ? PaymentFrequency[jsonObject["paymentFreq"]] : null;
+        const paymentFreq: PaymentFrequency | null = jsonObject["paymentFreq"] ? new PaymentFrequency(jsonObject["paymentFreq"]) : null;
         const paymentBase: number | null = jsonObject["paymentBase"];
         const paymentHigh: number | null = jsonObject["paymentHigh"];
         const locationStr: string | null = jsonObject["locationStr"];
@@ -139,7 +143,9 @@ export class JobFactory {
         var location: LocationObject | null;
         try {
             location = LocationObjectFactory.generateLocationFromJson(jsonObject["location"]);
-        } catch {TypeError} {
+        } catch (error) {
+            console.log("Could not generate location with error");
+            console.log(error);
             location = null;
         }
         return new Job(jobId, applicants, careerStage, jobName, company, paymentBase, paymentFreq, paymentHigh, 

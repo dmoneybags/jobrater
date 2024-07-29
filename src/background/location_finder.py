@@ -20,8 +20,8 @@ class LocationFinder:
         Location object or none
     '''
     def try_get_company_address(company : str, location_str : str) -> Location | None:
-        print("Sending requests")
         query : str = f"{company}, {location_str}"
+        print("Sending request to read company with query: " +  query)
         google_places_url : str = LocationFinder.base_url + f"?input={query}&inputtype=textquery&fields=name,formatted_address&key={GOOGLE_API_KEY}"
 
         response : requests.Response = requests.get(google_places_url)

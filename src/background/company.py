@@ -74,7 +74,8 @@ class Company:
             overall_rating = sql_query_row["OverallRating"]
             return cls(company_name, business_outlook_rating, career_opportunities_rating, ceo_rating, compensation_and_benefits_rating , culture_and_values_rating, diversity_and_inclusion_rating,
                        senior_management_rating, work_life_balance_rating, overall_rating)
-        except KeyError:
+        except KeyError as e:
+            print(f"FAILED TO CREATE COMPANY RECIEVED KEYERROR OF {e}")
             raise CompanyInvalidData(sql_query_row)
     '''
     try_create_with_sql_row
@@ -111,7 +112,9 @@ class Company:
             overall_rating = sql_query_row["OverallRating"]
             return cls(company_name, business_outlook_rating, career_opportunities_rating, ceo_rating, compensation_and_benefits_rating , culture_and_values_rating, diversity_and_inclusion_rating,
                        senior_management_rating, work_life_balance_rating, overall_rating)
-        except KeyError:
+        except KeyError as e:
+            print(f"FAILED TO CREATE COMPANY RECIEVED KEYERROR OF {e}")
+            print("Returning empty company")
             return None
     '''
     create_with_json
@@ -185,7 +188,9 @@ class Company:
             overall_rating = request_json["overallRating"]
             return cls(company_name, business_outlook_rating, career_opportunities_rating, ceo_rating, compensation_and_benefits_rating , culture_and_values_rating, diversity_and_inclusion_rating,
                        senior_management_rating, work_life_balance_rating, overall_rating)
-        except KeyError:
+        except KeyError as e:
+            print(f"FAILED TO CREATE COMPANY RECIEVED KEYERROR OF {e}")
+            print("Returning empty company")
             return cls(company_name, 0, 0, 0, 0 , 0, 0, 0, 0, 0)
     '''
     to_json
