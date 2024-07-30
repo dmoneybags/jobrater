@@ -2,7 +2,7 @@ import { json } from "stream/consumers";
 export class Company {
     companyName : string;
     businessOutlookRating: number;
-    careerOpportunitesRating: number;
+    careerOpportunitiesRating: number;
     ceoRating: number;
     compensationAndBenefitsRating: number;
     cultureAndValuesRating: number;
@@ -17,7 +17,7 @@ export class Company {
      * 
      * @param {string} companyName
      * @param {number} businessOutlookRating 
-     * @param {number} careerOpportunitesRating 
+     * @param {number} careerOpportunitiesRating 
      * @param {number} ceoRating 
      * @param {number} compensationAndBenefitsRating 
      * @param {number} cultureAndValuesRating 
@@ -26,13 +26,13 @@ export class Company {
      * @param {number} workLifeBalanceRating 
      * @param {number} overallRating 
      */
-    constructor(companyName: string, businessOutlookRating: number, careerOpportunitesRating: number, ceoRating: number,
+    constructor(companyName: string, businessOutlookRating: number, careerOpportunitiesRating: number, ceoRating: number,
         compensationAndBenefitsRating: number, cultureAndValuesRating: number, diversityAndInclusionRating: number,
         seniorManagementRating: number, workLifeBalanceRating: number, overallRating: number
     ){
         this.companyName = companyName;
         this.businessOutlookRating = businessOutlookRating;
-        this.careerOpportunitesRating = careerOpportunitesRating;
+        this.careerOpportunitiesRating = careerOpportunitiesRating;
         this.ceoRating = ceoRating;
         this.compensationAndBenefitsRating = compensationAndBenefitsRating;
         this.cultureAndValuesRating = cultureAndValuesRating;
@@ -56,18 +56,17 @@ export class CompanyFactory {
      * @returns {Company} 
      */
     static generateFromJson(json_object: Record<string, any>): Company{
-        if (typeof json_object !== "object"){throw new TypeError("type of " + String(typeof json_object) + " is invalid json");}
         return new Company(
             json_object["companyName"], 
-            json_object["businessOutlookRating"], 
-            json_object["careerOpportunitesRating"],
-            json_object["ceoRating"], 
-            json_object["compensationAndBenefitsRating"], 
-            json_object["cultureAndValuesRating"], 
-            json_object["diversityAndInclusionRating"],
-            json_object["seniorManagementRating"], 
-            json_object["workLifeBalanceRating"], 
-            json_object["overallRating"]
+            Number(json_object["businessOutlookRating"]), 
+            Number(json_object["careerOpportunitiesRating"]),
+            Number(json_object["ceoRating"]), 
+            Number(json_object["compensationAndBenefitsRating"]), 
+            Number(json_object["cultureAndValuesRating"]), 
+            Number(json_object["diversityAndInclusionRating"]),
+            Number(json_object["seniorManagementRating"]), 
+            Number(json_object["workLifeBalanceRating"]), 
+            Number(json_object["overallRating"])
         )
     }
     /**

@@ -5,7 +5,7 @@ import uuid
 from company_table import CompanyTable
 from user_job_table import UserJobTable
 from job_location_table import JobLocationTable
-from job import Job
+from job import Job, Mode
 from typing import Dict
 from mysql.connector.errors import IntegrityError
 from uuid import UUID
@@ -113,37 +113,51 @@ class JobTable:
     def add_job_with_foreign_keys(job : Job, user_id_uuid : UUID | str) -> Job:
         user_id : str = str(user_id_uuid)
         #check that the company isn't already in our DB if it isn't then we add it
+
+        # ============== Company ===============
         if not CompanyTable.read_company_by_id(job.company.company_name):
-            if job.company.isEmpty():
-                CompanyTable.add_company(job.company)
-                #just being sure we have the proper data
-                job.company = CompanyTable.read_company_by_id(job.company.company_name)
-                print("COMPANY SUCCESSFULLY ADDED")
+            CompanyTable.add_company(job.company)
+            print("COMPANY SUCCESSFULLY ADDED")
         else:
             print("COMPANY ALREADY IN DB")
             job.company = CompanyTable.read_company_by_id(job.company.company_name)
+        # =====================================
+
+        # =============== Job =================
         try:
             JobTable.add_job(job)
             print("JOB SUCCESSFULLY ADDED")
         except IntegrityError:
             print("JOB ALREADY IN DB")
         #add the job to the users db
+        # =====================================
+
+        # =========== User Job ================
         try:
             UserJobTable.add_user_job(user_id, job.job_id)
             print("USER JOB ADDED")
         except IntegrityError:
             print("USER JOB ALREADY IN DB")
+        # =====================================
+
+        # =========== Location ================
         try:
             if job.location_object:
+                print("Job sent with location, adding location")
                 JobLocationTable.add_job_location(job.location_object, job)
             else:
                 try:
-                    job.location_object = JobLocationTable.get_and_add_location_for_job(job)
+                    if job.location_str and job.mode != Mode.REMOTE:
+                        print("No location sent, attempting to request from google places")
+                        job.location_object = JobLocationTable.get_and_add_location_for_job(job)
+                    else:
+                        job.location_object = None
                 except LocationNotFound:
                     print("COULD NOT FIND LOCATION FOR JOB: " + job.job_name)
                     job.location_object = None
         except IntegrityError:
             print('job location already in DB')
+        # ======================================
         return job
     '''
     add_job

@@ -30,6 +30,10 @@ import daemon
 from flask_cors import CORS
 import logging
 from logging.handlers import RotatingFileHandler
+import signal
+from functools import partial
+
+signal.signal(signal.SIGTERM, partial(HelperFunctions.handle_sigterm, caller_name="auth_server"))
 
 
 app : Flask = Flask(__name__)
@@ -191,8 +195,6 @@ class AuthServer:
                     app.run(debug=False, port=PORT)
             except Exception as e:
                 print(e)
-            finally:
-                HelperFunctions.remove_pid_file("auth_server")
 if __name__ == '__main__':
     # Check for the -I argument
     if '-i' in sys.argv:

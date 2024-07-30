@@ -23,7 +23,7 @@ initialized
 '''
 
 from flask import Flask, abort
-from flask import Flask, jsonify, request
+from flask import Flask, request
 from flask_cors import CORS
 import json
 from mysql.connector.errors import IntegrityError
@@ -44,6 +44,10 @@ import sys
 import os
 import traceback
 import asyncio
+import signal
+from functools import partial
+
+signal.signal(signal.SIGTERM, partial(HelperFunctions.handle_sigterm, caller_name="database_server"))
 
 #Set up our server using flask
 app = Flask(__name__)
@@ -71,7 +75,7 @@ class DatabaseServer:
     @app.route('/databases/add_job', methods=['POST'])
     @token_required
     def add_job():
-
+        print("=============== BEGIN ADD JOB =================")
         async def get_company_data_async(company: str) -> Dict:
             return await glassdoor_scraper.get_company_data(company)
 
@@ -83,14 +87,14 @@ class DatabaseServer:
         try:
             message : str = request.args.get('jobJson', default="NO JOB JSON LOADED", type=str)
             job_json : Dict = json.loads(message)
-            print("========= RECIEVED JOB JSON OF =========== \n\n")
+            print("=============== RECIEVED JOB JSON OF =========== \n\n")
             print(json.dumps(job_json, indent=4))
-            company: str = job_json["company"]["companyName"]
+            companyName: str = job_json["company"]["companyName"]
             if (not CompanyTable.read_company_by_id("company") and CANSCRAPEGLASSDOOR):
                 print("RETRIEVING COMPANY FROM GLASSDOOR")
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                job_json["company"] = loop.run_until_complete(get_company_data_async(company))
+                job_json["company"] = loop.run_until_complete(get_company_data_async(companyName))
             print("\n\n")
         except json.JSONDecodeError:
             print("YOUR JOB JSON OF " + message + "IS INVALID")
@@ -102,6 +106,8 @@ class DatabaseServer:
         #Call the database function to execute the insert
         #we complete the jobs data before returning it to the client
         completeJob: Job = JobTable.add_job_with_foreign_keys(job, user_id)
+        assert(completeJob.company is not None)
+        print("============== END ADD JOB ================")
         return json.dumps({"job": completeJob.to_json()}), 200
     '''
     read_most_recent_job
@@ -261,9 +267,9 @@ class DatabaseServer:
         user : User | None = decode_user_from_token(token)
         if not user:
             abort(404)
-        jobs : list[Job] = UserJobTable.get_user_jobs(user["userId"])
+        jobs : list[Job] = UserJobTable.get_user_jobs(user.user_id)
         json_jobs : list[Dict] = [job.to_json() for job in jobs]
-        return jsonify({"user": user.to_json(), "jobs": json_jobs})
+        return json.dumps({"user": user.to_json(), "jobs": json_jobs})
     '''
     get_user_data_by_googleId
 
@@ -292,7 +298,7 @@ class DatabaseServer:
             abort(404)
         jobs : list[Job] = UserJobTable.get_user_jobs(user["userId"])
         json_jobs : list[Dict] = [job.to_json() for job in jobs]
-        return jsonify({"user": user.to_json(), "jobs": json_jobs})
+        return json.dumps({"user": user.to_json(), "jobs": json_jobs})
     '''
     delete_user
 
@@ -315,7 +321,7 @@ class DatabaseServer:
             return 'Invalid Token', 401
         user_email : str = user.email
         if not UserTable.read_user_by_email(user_email):
-            return jsonify({'message': 'User not in db'}), 401
+            return json.dumps({'message': 'User not in db'}), 401
         UserTable.delete_user_by_email(user_email)
         return 'success', 200
     '''
@@ -343,8 +349,6 @@ class DatabaseServer:
         except Exception as e:
             print(e)
             traceback.print_exc()
-        finally:
-            HelperFunctions.remove_pid_file("database_server")
 if __name__ == '__main__':
     # Check for the -I argument
     if '-i' in sys.argv:

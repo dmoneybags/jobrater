@@ -84,6 +84,8 @@ class CompanyTable:
         cursor.execute("USE JOBDB")
         company_json : Dict = company.to_json()
         company_add_str : str = CompanyTable.__get_company_add_query(company_json)
+        print("ADDING COMPANY OF: ")
+        print(company_json)
         cursor.execute(company_add_str, list(company_json.values()))
         print("COMPANY SUCCESSFULLY ADDED")
         DatabaseFunctions.MYDB.commit()

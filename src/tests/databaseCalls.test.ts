@@ -6,6 +6,8 @@ import { Job, JobFactory, Mode, PaymentFrequency } from '../content/job';
 import { User } from '../content/user';
 import { register } from '../content/auth';
 import { genSaltSync } from 'bcryptjs-react';
+import { LocationObject } from '../content/location';
+import { MockObjects } from './__mocks__/objects';
 
 describe("DatabaseCalls.ts file tests", () => {
     beforeAll(() => {
@@ -16,83 +18,86 @@ describe("DatabaseCalls.ts file tests", () => {
         return expect(DatabaseCalls.checkIfCompanyExists("Initech")).resolves.toEqual(false);
     })
     it("tests that we cannot add a job without a token", ()=> {
-        const companyJson : Record<string, any> = {
-            companyName: "Initech",
-            businessOutlookRating: 4.2,
-            careerOpportunitesRating: 3.4,
-            ceoRating: 3.7,
-            compensationAndBenefitsRating: 4.1,
-            cultureAndValuesRating: 4.0,
-            diversityAndInclusionRating: 4.9,
-            seniorManagementRating: 1.3,
-            workLifeBalanceRating: 4.8,
-            overallRating: 2.1
-        };
-        const company: Company = CompanyFactory.generateFromJson(companyJson);
-        const job: Job = new Job("1252154223", 49, "Director", "Software Engineer", company, 123000, new PaymentFrequency("yr"),
-                                141000, "Remote", new Mode("Remote"), 10000, null, null
-        );
+        const company: Company = MockObjects.initech_with_data_company;
+        const job: Job = MockObjects.initech_software_engineer_job;
         return expect(DatabaseCalls.sendMessageToAddJob(job)).rejects.toEqual("401");
     })
     it("Tests that we can add a job with a token", async () => {
 
-        const mockUser: User = new User("_", "dandemoney@gmail.com", null, "Daniel", "DeMoney", null);
+        const mockUser: User = MockObjects.dandemoney_user;
 
         await register(mockUser, "Xdfgh1012#", "Xdfgh1012#", genSaltSync());
 
-        const companyJson: Record<string, any> = {
-            companyName: "Initech",
-            businessOutlookRating: 4.2,
-            careerOpportunitesRating: 3.4,
-            ceoRating: 3.7,
-            compensationAndBenefitsRating: 4.1,
-            cultureAndValuesRating: 4.0,
-            diversityAndInclusionRating: 4.9,
-            seniorManagementRating: 1.3,
-            workLifeBalanceRating: 4.8,
-            overallRating: 2.1
-        };
-
-        const company: Company = CompanyFactory.generateFromJson(companyJson);
-        const job: Job = new Job(
-            "1252154223", 
-            49, 
-            "Director", 
-            "Software Engineer", 
-            company, 
-            123000, 
-            new PaymentFrequency("yr"),
-            141000, 
-            "Remote", 
-            new Mode("Remote"), 
-            10000, 
-            null, 
-            null
-        );
+        const company: Company = MockObjects.initech_with_data_company;
+        const job: Job = MockObjects.initech_software_engineer_job;
         await expect(DatabaseCalls.sendMessageToAddJob(job)).resolves.not.toThrow();
     })
-    it("tests that we can add jobs with null values", ()=>{
+    it("tests that we can add jobs with null values", async ()=>{
+        const job: Job = MockObjects.apple_software_engineer_job;
+        await expect(DatabaseCalls.sendMessageToAddJob(job)).resolves.not.toThrow();
+    })
+    it("tests that we can properly read the job back with foriegn keys after a read", async ()=>{
+        const company: Company = MockObjects.apple_with_data_company;
+        const job: Job = MockObjects.apple_null_values_big_hoss_job;
+        await DatabaseCalls.sendMessageToAddJob(job)
+        .then((responseJson) => {
+            const finishedJobJson: Record<string, any> = responseJson["job"];
+            console.log(finishedJobJson);
+            const rereadJob : Job = JobFactory.generateFromJson(finishedJobJson);
+            //Check company values
+            expect(rereadJob.company).toEqual(company);
+            //Check job values
+            expect(rereadJob.jobId).toEqual(job.jobId);
+            expect(rereadJob.applicants).toEqual(job.applicants);
+            expect(rereadJob.careerStage).toEqual(job.careerStage);
+            expect(rereadJob.jobName).toEqual(job.jobName);
+            expect(rereadJob.paymentFreq).toEqual(job.paymentFreq);
+            expect(rereadJob.paymentBase).toEqual(job.paymentBase);
+            expect(rereadJob.paymentHigh).toEqual(job.paymentHigh);
+            expect(rereadJob.mode).toEqual(job.mode);
+        });
+    })
+    it("tests that we cannot add a duplicate job", async ()=>{
+        const company: Company = MockObjects.apple_with_data_company;
+        const job: Job = MockObjects.apple_null_values_big_hoss_job;
+        await expect(DatabaseCalls.sendMessageToAddJob(job)).resolves.not.toThrow();
+    })
+    it("tests that the company is added into the database after adding a job", async ()=>{
+        const companyName: string = "Apple";
+        await expect(DatabaseCalls.checkIfCompanyExists(companyName)).resolves.toEqual(true)
+    })
+    it("tests that we can properly load userdata after a login", async ()=>{
+        await DatabaseCalls.getUserData()
+        .then((json) => {
 
-    })
-    it("tests that we can properly read the job back with foriegn keys after a read", ()=>{
+            const company: Company = MockObjects.apple_with_data_company;
+            const job: Job = MockObjects.apple_null_values_big_hoss_job;
+            const jobs: Job[] = json["jobs"];
+            expect(jobs.length).toBe(3);
+            const rereadJob = jobs[0];
+            //Check company values
+            expect(rereadJob.company).toEqual(company);
+            //Check job values
+            expect(rereadJob.jobId).toEqual(job.jobId);
+            expect(rereadJob.applicants).toEqual(job.applicants);
+            expect(rereadJob.careerStage).toEqual(job.careerStage);
+            expect(rereadJob.jobName).toEqual(job.jobName);
+            expect(rereadJob.paymentFreq).toEqual(job.paymentFreq);
+            expect(rereadJob.paymentBase).toEqual(job.paymentBase);
+            expect(rereadJob.paymentHigh).toEqual(job.paymentHigh);
+            expect(rereadJob.mode).toEqual(job.mode);
 
+            const rereadUser: User = json["user"];
+            const user: User = MockObjects.dandemoney_user;
+            expect(user.email).toEqual(rereadUser.email);
+            expect(user.firstName).toEqual(rereadUser.firstName);
+            expect(user.lastName).toEqual(rereadUser.lastName);
+        })
     })
-    it("tests that we cannot add a duplicate job", ()=>{
-
-    })
-    it("tests that the company is added into the database after adding a job", ()=>{
-
-    })
-    it("tests that we can properly load userdata after a login", ()=>{
-        
-    })
-    it("tests that we can properly load userdata after a register", ()=>{
-        console.log("This rebuilds the app for a clean register and resets localStorage");
-    })
-    it("tests that we get a 401 without a valid token", ()=> {
-        console.log("This clears the token and would trigger a reauth");
-    })
-    it("tests that we can delete a user", ()=> {
-        
+    it("tests that we can delete a user", async ()=> {
+        await DatabaseCalls.sendMessageToDeleteUser()
+        .then(() => {
+            expect(DatabaseCalls.getUserData).rejects.toEqual("401");
+        })
     })
 })

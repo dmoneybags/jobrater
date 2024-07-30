@@ -57,6 +57,7 @@ class Job:
                  payment_base : Decimal | None, payment_freq : PaymentFrequency | None, payment_high : Decimal | None, location_str : str,
                  mode: Mode, seconds_posted_ago : int, time_added : datetime, location_object : Location | None) -> None:
         self.job_id : str = job_id
+        assert(self.job_id is not None)
         self.applicants : int = applicants
         self.career_stage : str = career_stage
         self.job_name : str = job_name
@@ -106,7 +107,9 @@ class Job:
     returns:
         PaymentFrequency object
     '''
-    def str_to_payment_frequency(payment_freq_str : str) -> Mode:
+    def str_to_payment_frequency(payment_freq_str : str | None) -> Mode | None:
+        if payment_freq_str is None:
+            return None
         payment_freq_list : list[str] = ["hr", "yr"]
         enum_value : int = payment_freq_list.index(payment_freq_str) + 1
         return PaymentFrequency(enum_value)
@@ -135,7 +138,9 @@ class Job:
     '''
     @classmethod
     def create_with_sql_row(cls, sql_query_row: (Dict[str, RowItemType])) -> 'Job':
-        company : Company | None = Company.try_create_with_sql_row(sql_query_row)
+        print("CREATING JOB WITH SQL ROW OF: ")
+        print(sql_query_row)
+        company : Company | None = Company.create_with_sql_row(sql_query_row)
         location : Location | None = Location.try_get_location_from_sql_row(sql_query_row)
         job_id : str = sql_query_row["JobId"]
         applicants : int = int(sql_query_row["Applicants"])
@@ -221,14 +226,14 @@ class Job:
             "careerStage" : self.career_stage,
             "jobName" : self.job_name,
             "company" : self.company.to_json(),
-            "paymentBase" : self.payment_base if self.payment_base else None,
-            "paymentHigh": self.payment_high,
+            "paymentBase": float(self.payment_base) if self.payment_base is not None else None,
+            "paymentHigh": float(self.payment_high) if self.payment_high is not None else None,
             "paymentFreq" : Job.payment_frequency_to_str(self.payment_freq) if self.payment_freq else None,
             "locationStr" : self.location_str,
             "mode" : Job.mode_to_str(self.mode) if self.mode else None,
             "secondsPostedAgo" : self.seconds_posted_ago,
             "timeAdded" : int(self.time_added.timestamp()),
-            "locationObject" : self.location_object.to_json() if self.location_object else None
+            "location" : self.location_object.to_json() if self.location_object else None
         }
     '''
     to_sql_friendly_json
@@ -255,6 +260,4 @@ class Job:
             "mode" : Job.mode_to_str(self.mode) if self.mode else None,
             "secondsPostedAgo" : self.seconds_posted_ago
         }
-        if self.location_object:
-            sql_friendly_dict["location"] = self.location_object.to_json()
         return sql_friendly_dict
