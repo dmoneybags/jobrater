@@ -37,7 +37,7 @@ import asyncio
 import json
 import os
 import re
-import httpx
+from tbselenium.tbdriver import TorBrowserDriver, Options
 from bs4 import BeautifulSoup
 import brotli
 from html import escape
@@ -46,6 +46,7 @@ from urllib.parse import urljoin
 from loguru import logger as log
 from random import choice
 
+PATH_TO_TOR_DRIVER = os.path.expanduser('~/bin')
 
 def extract_apollo_state(html):
     """Extract apollo graphql state data from HTML source"""
@@ -80,9 +81,10 @@ def parse_salaries(html) -> Tuple[List[Dict], int]:
     xhr_cache = cache["ROOT_QUERY"]
     salaries = next(v for k, v in xhr_cache.items() if k.startswith("salariesByEmployer") and v.get("results"))
     return salaries
-async def scrape_cache(url: str, session: httpx.AsyncClient):
+async def scrape_cache(url: str, session: TorBrowserDriver):
     """Scrape job listings"""
-    first_page_response = session.get(url)  # Await here to fetch the first page asynchronously
+    session.get(url)
+    first_page_response = session.page_source  # Await here to fetch the first page asynchronously
     cache = extract_apollo_state(first_page_response.text)
     xhr_cache = cache["ROOT_QUERY"]
     key = [key for key in xhr_cache.keys() if key.startswith("employerReviewsRG")][0]
@@ -155,14 +157,16 @@ async def get_company_data(company: str) -> Dict:
             "DNT": "1"
         }
     ]
-    client : httpx.Client = httpx.Client(headers=choice(headers_list), follow_redirects=True)
-    #block execution until we find the companies
-    companies : list[FoundCompany] = await find_companies(company, client)
-    #Grab the url to the company
-    company_data_url : str = companies[0]["url_reviews"]
-    print("Company Data Url: "+company_data_url)
-    #Await scraping the company data from json embeded in the html
-    company_data_full : Dict = await scrape_cache(company_data_url, client)
+    options = Options()
+    options.add_argument("--headless")
+    with TorBrowserDriver(PATH_TO_TOR_DRIVER) as client:
+        #block execution until we find the companies
+        companies : list[FoundCompany] = await find_companies(company, client)
+        #Grab the url to the company
+        company_data_url : str = companies[0]["url_reviews"]
+        print("Company Data Url: "+company_data_url)
+        #Await scraping the company data from json embeded in the html
+        company_data_full : Dict = await scrape_cache(company_data_url, client)
     print(json.dumps(company_data_full, indent=2))
     return {
         "overallRating": company_data_full["ratings"]["overallRating"],
@@ -210,17 +214,15 @@ class FoundCompany(TypedDict):
     url_jobs: str
     url_reviews: str
     url_salaries: str
-async def find_companies(query: str, session: httpx.AsyncClient) -> List[FoundCompany]:
+async def find_companies(query: str, session: TorBrowserDriver) -> List[FoundCompany]:
     """find company Glassdoor ID and name by query. e.g. "ebay" will return "eBay" with ID 7853"""
     print("URL: " + f"https://www.glassdoor.com/searchsuggest/typeahead?numSuggestions=8&source=GD_V2&version=NEW&rf=full&fallback=token&input={query}")
     # Set a realistic timeout
-    timeout = httpx.Timeout(10.0, connect=5.0)
+    # UPDATE, now set upstream
     url = f"https://www.glassdoor.com/searchsuggest/typeahead?numSuggestions=8&source=GD_V2&version=NEW&rf=full&fallback=token&input={query}"
     print("URL: "+ url)
-    result = session.get(
-        url,
-        timeout=timeout
-    )
+    session.get(url)
+    result: str = session.page_source
     try:
         data = result.json()
     except Exception as e:
