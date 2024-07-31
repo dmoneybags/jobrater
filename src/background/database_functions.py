@@ -16,20 +16,17 @@ Background.js
 Listens for: a tab change event fired when the current tabs url changes
 Executes: scrapes the jobId from the url
 Sends: a message to the contentScript that we recieved a new job
-\/
-\/
+
 ContentScript.js
 Listens for: the new job event from background.js
 Executes the scraping of the linkedin and glassdoor
 Calls:
-\/
-\/
+
 database_server.py
 Listens for: requests sent on PORT 5001
 Executes the database functions to CRUD jobs
 Through routines in
-\/
-\/
+
 database_functions.py
 
 TO DO:
