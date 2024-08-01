@@ -62,7 +62,9 @@ def get_random_header():
             "Connection": "keep-alive",
             "Upgrade-Insecure-Requests": "1",
             "Referer": "https://www.google.com/",
-            "DNT": "1"
+            "DNT": "1",
+            "screen-width": 2560,
+            "screen-height": 1080
         },
         {
             "User-Agent": (
@@ -75,7 +77,9 @@ def get_random_header():
             "Connection": "keep-alive",
             "Upgrade-Insecure-Requests": "1",
             "Referer": "https://www.apple.com/",
-            "DNT": "1"
+            "DNT": "1",
+            "screen-width": 2560,
+            "screen-height": 1440
         },
         {
             "User-Agent": (
@@ -87,7 +91,9 @@ def get_random_header():
             "Connection": "keep-alive",
             "Upgrade-Insecure-Requests": "1",
             "Referer": "https://www.mozilla.org/",
-            "DNT": "1"
+            "DNT": "1",
+            "screen-width": 2560,
+            "screen-height": 1440
         },
         {
             "User-Agent": (
@@ -100,7 +106,9 @@ def get_random_header():
             "Connection": "keep-alive",
             "Upgrade-Insecure-Requests": "1",
             "Referer": "https://www.google.com/",
-            "DNT": "1"
+            "DNT": "1",
+            "screen-width": 1440,
+            "screen-height": 900
         },
         {
             "User-Agent": (
@@ -113,12 +121,15 @@ def get_random_header():
             "Connection": "keep-alive",
             "Upgrade-Insecure-Requests": "1",
             "Referer": "https://www.apple.com/",
-            "DNT": "1"
+            "DNT": "1",
+            "screen-width": 390,
+            "screen-height": 844
         }
     ]
     return choice(headers_list)
 
 def get_driver(headless: bool = True):
+    print("generating driver...")
     # Set up the proxy
     proxy = Proxy()
     proxy.proxy_type = ProxyType.MANUAL
@@ -126,6 +137,8 @@ def get_driver(headless: bool = True):
     proxy.ssl_proxy = "127.0.0.1:8888"
     # Set up the headers
     header: Dict = get_random_header()
+    print("Using headers: ")
+    print(header)
     profile = webdriver.FirefoxProfile()
     profile.set_preference("intl.accept_languages", "en-US,en;q=0.9")
     profile.set_preference('general.useragent.override', header["User-Agent"])
@@ -149,7 +162,8 @@ def get_driver(headless: bool = True):
 
     # Initialize the WebDriver with the options
     driver: WebDriver = webdriver.Firefox(options=firefox_options, firefox_profile=profile)
-    driver.set_window_size(2560, 1440)
+    driver.set_window_size(header["screen-width"], header["screen-height"])
+    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
     return driver
 
 def extract_apollo_state(html):

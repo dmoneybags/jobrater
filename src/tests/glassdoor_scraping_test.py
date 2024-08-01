@@ -9,7 +9,7 @@ import time
 class GlassdoorScrapingTests:
     print("Checking glassdoor scraping success rate")
     companies: list[str] = ["Apple", "Google", "ADP", "BlackRock", "Deloitte",
-                            "Verizon", "AT&T", "T-mobile", "Macys", "Edison",
+                            "Verizon", "Coherent", "T-mobile", "Nvidia", "Edison",
                             "Microsoft", "Amazon", "Cisco", "Yamaha", "Mercedes"]
     async def checkSuccessRate(numAttempts: int = 200) -> float:
         errors: int = 0
@@ -17,8 +17,11 @@ class GlassdoorScrapingTests:
             company: str = choice(GlassdoorScrapingTests.companies)
             try:
                 await get_company_data(company)
-            except Exception as e:
+            except ValueError as e:
                 print(f"Failed on {company} with error of {e}")
+                errors += 1
+            except IndexError as e:
+                print(f"Failed on {company} to grab jobs with error of {e}")
                 errors += 1
             time.sleep(1)
         print(f"Got success rate of {1 - errors/numAttempts}")
