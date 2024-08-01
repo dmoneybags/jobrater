@@ -37,7 +37,10 @@ import asyncio
 import json
 import os
 import re
-from tbselenium.tbdriver import TorBrowserDriver, Options
+from selenium import webdriver
+from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.common.proxy import Proxy, ProxyType
+from selenium.webdriver.remote.webdriver import WebDriver
 from bs4 import BeautifulSoup
 import brotli
 from html import escape
@@ -45,8 +48,6 @@ from typing import Dict, List, Optional, Tuple, TypedDict
 from urllib.parse import urljoin
 from loguru import logger as log
 from random import choice
-
-PATH_TO_TOR_DRIVER = os.path.expanduser('~/bin')
 
 def extract_apollo_state(html):
     """Extract apollo graphql state data from HTML source"""
@@ -81,7 +82,7 @@ def parse_salaries(html) -> Tuple[List[Dict], int]:
     xhr_cache = cache["ROOT_QUERY"]
     salaries = next(v for k, v in xhr_cache.items() if k.startswith("salariesByEmployer") and v.get("results"))
     return salaries
-async def scrape_cache(url: str, session: TorBrowserDriver):
+async def scrape_cache(url: str, session: WebDriver):
     """Scrape job listings"""
     session.get(url)
     first_page_response = session.page_source  # Await here to fetch the first page asynchronously
@@ -157,9 +158,17 @@ async def get_company_data(company: str) -> Dict:
             "DNT": "1"
         }
     ]
-    options = Options()
-    options.add_argument("--headless")
-    with TorBrowserDriver(PATH_TO_TOR_DRIVER) as client:
+    # Set up the proxy
+    proxy = Proxy()
+    proxy.proxy_type = ProxyType.MANUAL
+    proxy.http_proxy = "127.0.0.1:9050"
+    proxy.ssl_proxy = "127.0.0.1:9050"
+
+    # Configure Firefox options
+    firefox_options = Options()
+    firefox_options.proxy = proxy
+    firefox_options.add_argument("--headless")
+    with webdriver.Firefox(options=firefox_options) as client:
         #block execution until we find the companies
         companies : list[FoundCompany] = await find_companies(company, client)
         #Grab the url to the company
