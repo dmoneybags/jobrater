@@ -40,7 +40,7 @@ import re
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.proxy import Proxy, ProxyType
-from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.remote.webdriver import WebDriver, By
 from bs4 import BeautifulSoup
 import brotli
 from html import escape
@@ -49,49 +49,7 @@ from urllib.parse import urljoin
 from loguru import logger as log
 from random import choice
 
-def extract_apollo_state(html):
-    """Extract apollo graphql state data from HTML source"""
-    soup = BeautifulSoup(html, 'html.parser')
-    script_tag = soup.find('script', id='__NEXT_DATA__')
-    if script_tag:
-        data = script_tag.string.strip()
-        if data:
-            # Load JSON data into Python dictionary
-            json_data = json.loads(data)
-            # Access nested properties
-            apollo_cache = json_data["props"]["pageProps"]["apolloCache"]
-            return apollo_cache
-    try:
-        data = re.findall('apolloState":\s*({.+})};', html)[0]
-        data = json.loads(data)
-        return data
-    except IndexError:
-        raise ValueError("No apollo state in html: " + html)
-
-
-def parse_reviews(html) -> Tuple[List[Dict], int]:
-    """parse jobs page for job data and total amount of jobs"""
-    cache = extract_apollo_state(html)
-    xhr_cache = cache["ROOT_QUERY"]
-    reviews = next(v for k, v in xhr_cache.items() if k.startswith("employerReviews") and v.get("reviews"))
-    return reviews
-
-def parse_salaries(html) -> Tuple[List[Dict], int]:
-    """parse jobs page for job data and total amount of jobs"""
-    cache = extract_apollo_state(html)
-    xhr_cache = cache["ROOT_QUERY"]
-    salaries = next(v for k, v in xhr_cache.items() if k.startswith("salariesByEmployer") and v.get("results"))
-    return salaries
-async def scrape_cache(url: str, session: WebDriver):
-    """Scrape job listings"""
-    session.get(url)
-    first_page_response = session.page_source  # Await here to fetch the first page asynchronously
-    cache = extract_apollo_state(first_page_response.text)
-    xhr_cache = cache["ROOT_QUERY"]
-    key = [key for key in xhr_cache.keys() if key.startswith("employerReviewsRG")][0]
-    company_data = xhr_cache[key]
-    return company_data
-async def get_company_data(company: str) -> Dict:
+def get_random_header():
     headers_list : list[Dict] = [
         {
             "User-Agent": (
@@ -158,17 +116,86 @@ async def get_company_data(company: str) -> Dict:
             "DNT": "1"
         }
     ]
+    return choice(headers_list)
+
+def get_driver(headless: bool = True):
     # Set up the proxy
     proxy = Proxy()
     proxy.proxy_type = ProxyType.MANUAL
-    proxy.http_proxy = "127.0.0.1:9050"
-    proxy.ssl_proxy = "127.0.0.1:9050"
-
+    proxy.http_proxy = "127.0.0.1:8888"
+    proxy.ssl_proxy = "127.0.0.1:8888"
+    # Set up the headers
+    header: Dict = get_random_header()
+    profile = webdriver.FirefoxProfile()
+    profile.set_preference("intl.accept_languages", "en-US,en;q=0.9")
+    profile.set_preference('general.useragent.override', header["User-Agent"])
+    profile.set_preference("intl.accept_languages", header["Accept-Language"])
+    profile.set_preference("network.http.accept-encoding", header["Accept-Encoding"])
+    profile.set_preference("network.http.upgrade-insecure-requests", "1")
+    profile.set_preference("privacy.donottrackheader.enabled", True)
     # Configure Firefox options
     firefox_options = Options()
-    firefox_options.proxy = proxy
-    firefox_options.add_argument("--headless")
-    with webdriver.Firefox(options=firefox_options) as client:
+    #firefox_options.proxy = proxy
+    firefox_options.set_preference("dom.webdriver.enabled", False)
+    firefox_options.set_preference('useAutomationExtension', False)
+    firefox_options.set_preference("media.peerconnection.enabled", False)
+
+    # Optional: disable notifications and popups
+    firefox_options.set_preference("dom.webnotifications.enabled", False)
+    firefox_options.set_preference("dom.push.enabled", False)
+    if headless:
+        firefox_options.add_argument("--headless")
+    #firefox_options.proxy = proxy
+
+    # Initialize the WebDriver with the options
+    driver: WebDriver = webdriver.Firefox(options=firefox_options, firefox_profile=profile)
+    driver.set_window_size(2560, 1440)
+    return driver
+
+def extract_apollo_state(html):
+    """Extract apollo graphql state data from HTML source"""
+    soup = BeautifulSoup(html, 'html.parser')
+    script_tag = soup.find('script', id='__NEXT_DATA__')
+    if script_tag:
+        data = script_tag.string.strip()
+        if data:
+            # Load JSON data into Python dictionary
+            json_data = json.loads(data)
+            # Access nested properties
+            apollo_cache = json_data["props"]["pageProps"]["apolloCache"]
+            return apollo_cache
+    try:
+        data = re.findall('apolloState":\s*({.+})};', html)[0]
+        data = json.loads(data)
+        return data
+    except IndexError:
+        raise ValueError("No apollo state in html: " + html)
+
+
+def parse_reviews(html) -> Tuple[List[Dict], int]:
+    """parse jobs page for job data and total amount of jobs"""
+    cache = extract_apollo_state(html)
+    xhr_cache = cache["ROOT_QUERY"]
+    reviews = next(v for k, v in xhr_cache.items() if k.startswith("employerReviews") and v.get("reviews"))
+    return reviews
+
+def parse_salaries(html) -> Tuple[List[Dict], int]:
+    """parse jobs page for job data and total amount of jobs"""
+    cache = extract_apollo_state(html)
+    xhr_cache = cache["ROOT_QUERY"]
+    salaries = next(v for k, v in xhr_cache.items() if k.startswith("salariesByEmployer") and v.get("results"))
+    return salaries
+async def scrape_cache(url: str, session: WebDriver):
+    """Scrape job listings"""
+    session.get(url)
+    first_page_response = session.page_source  # Await here to fetch the first page asynchronously
+    cache = extract_apollo_state(first_page_response)
+    xhr_cache = cache["ROOT_QUERY"]
+    key = [key for key in xhr_cache.keys() if key.startswith("employerReviewsRG")][0]
+    company_data = xhr_cache[key]
+    return company_data
+async def get_company_data(company: str) -> Dict:
+    with get_driver() as client:
         #block execution until we find the companies
         companies : list[FoundCompany] = await find_companies(company, client)
         #Grab the url to the company
@@ -231,12 +258,14 @@ async def find_companies(query: str, session: WebDriver) -> List[FoundCompany]:
     url = f"https://www.glassdoor.com/searchsuggest/typeahead?numSuggestions=8&source=GD_V2&version=NEW&rf=full&fallback=token&input={query}"
     print("URL: "+ url)
     session.get(url)
-    result: str = session.page_source
+    result: str = session.find_element(By.XPATH, "/html/body").text
     try:
-        data = result.json()
+        data = json.loads(result)
+        print(json.dumps(data, indent=2))
     except Exception as e:
-        print("DATA CONVERSION FAILED FOR: " + result.text)
-        print(f"HEADERS: {result.headers}")
+        print("DATA CONVERSION FAILED FOR: " + result)
+        while(1):
+            pass
         raise e
     companies = []
     for result in data:
