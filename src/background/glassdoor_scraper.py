@@ -223,7 +223,7 @@ class FoundCompany(TypedDict):
     url_jobs: str
     url_reviews: str
     url_salaries: str
-async def find_companies(query: str, session: TorBrowserDriver) -> List[FoundCompany]:
+async def find_companies(query: str, session: WebDriver) -> List[FoundCompany]:
     """find company Glassdoor ID and name by query. e.g. "ebay" will return "eBay" with ID 7853"""
     print("URL: " + f"https://www.glassdoor.com/searchsuggest/typeahead?numSuggestions=8&source=GD_V2&version=NEW&rf=full&fallback=token&input={query}")
     # Set a realistic timeout
