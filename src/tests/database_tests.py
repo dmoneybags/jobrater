@@ -16,7 +16,7 @@ from user_job_table import UserJobTable
 
 #TESTS JUST DB CODE, NO SERVERS
 job_data = {
-    "job": "Specification Sales",
+    "jobName": "Specification Sales",
     "locationStr": "Cupertino, CA",
     "secondsPostedAgo": 1814400,
     "applicants": "100",
@@ -146,7 +146,7 @@ def user_job_tests(user_id):
     job_id = ["1835781350", "3252359832", "2335285392", "3295295725"]
     for i in range(len(job_strs)):
         job_data_copy = job_data
-        job_data_copy["job"] = job_strs[i]
+        job_data_copy["jobName"] = job_strs[i]
         job_data_copy["jobId"] = job_id[i]
         print("TEST JOB BEING ADDED WITH NAME " + job_strs[i])
         job = Job.create_with_json(job_data_copy)
@@ -155,8 +155,12 @@ def user_job_tests(user_id):
     print(results)
     assert(len(results) == len(job_strs))
     for result in results:
+        print(result.job_name)
+    for result in results:
         #make sure the title is in our list
-        assert(job_strs.count(result.job_name) == 1)
+        if not job_strs.count(result.job_name) == 1:
+            print(f"{result.job_name} not found in job_strs")
+            assert(False)
     print("USER JOBS SUCCESSFULLY READ")
     #test that deleting the job deletes the user job
     print("TESTING DELETING JOB AND READING USER JOB")

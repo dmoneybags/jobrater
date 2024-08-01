@@ -179,7 +179,7 @@ class Job:
         company : Company = Company.try_create_with_json(json_object["company"])
         try:
             json_object["location"]["addressStr"]
-        except TypeError:
+        except KeyError:
             location : Location | None = LocationFinder.try_get_company_address(json_object["company"], json_object["locationStr"])
         job_id : str = json_object["jobId"]
         applicants : int = int(json_object["applicants"])
@@ -232,7 +232,7 @@ class Job:
             "locationStr" : self.location_str,
             "mode" : Job.mode_to_str(self.mode) if self.mode else None,
             "secondsPostedAgo" : self.seconds_posted_ago,
-            "timeAdded" : int(self.time_added.timestamp()),
+            "timeAdded" : int(self.time_added.timestamp()) if self.time_added is not None else None,
             "location" : self.location_object.to_json() if self.location_object else None
         }
     '''
