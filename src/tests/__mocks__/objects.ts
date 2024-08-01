@@ -1,5 +1,6 @@
 import { User } from "../../content/user";
 import { Company, CompanyFactory } from "../../content/company";
+import { LocationObject } from "../../content/location"
 import { PaymentFrequency, Mode, Job } from "../../content/job";
 
 //Mock file for objects used in our tests
@@ -85,5 +86,8 @@ export class MockObjects {
         10000, 
         null, 
         null
+    )
+    static apple_location: LocationObject = new LocationObject(
+        "One Apple Park Way", "Cupertino", "95014", "CA", 37.334606, -122.009102
     )
 }
