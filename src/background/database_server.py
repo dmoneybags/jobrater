@@ -33,9 +33,11 @@ from user_job_table import UserJobTable
 from user_table import UserTable
 from job_table import JobTable
 from company_table import CompanyTable
+from resume_table import ResumeTable
 from company import Company
 from job import Job
 from user import User
+from resume import Resume
 from typing import Dict
 import glassdoor_scraper
 from helper_functions import HelperFunctions
@@ -55,7 +57,7 @@ app = Flask(__name__)
 CORS(app)
 PORT=5001
 
-CANSCRAPEGLASSDOOR: bool = False
+CANSCRAPEGLASSDOOR: bool = True
 
 class DatabaseServer:
     #
@@ -268,8 +270,10 @@ class DatabaseServer:
         if not user:
             abort(404)
         jobs : list[Job] = UserJobTable.get_user_jobs(user.user_id)
+        resumes: list[Resume] = ResumeTable.get_resumes(user.user_id)
         json_jobs : list[Dict] = [job.to_json() for job in jobs]
-        return json.dumps({"user": user.to_json(), "jobs": json_jobs})
+        json_resumes : list[Dict] = [resume.to_json() for resume in resumes]
+        return json.dumps({"user": user.to_json(), "jobs": json_jobs, "resumes": json_resumes})
     '''
     get_user_data_by_googleId
 
@@ -324,6 +328,27 @@ class DatabaseServer:
             return json.dumps({'message': 'User not in db'}), 401
         UserTable.delete_user_by_email(user_email)
         return 'success', 200
+    #
+    #
+    # RESUME METHODS
+    #
+    #
+    @app.route('/databases/add_resume', methods=['POST'])
+    @token_required
+    def add_resume():
+        token : str = request.headers.get('Authorization')
+        user : User | None = decode_user_from_token(token)
+        resume_json_str: str = request.args.get('resume', default="NO RESUME LOADED", type=str)
+        resume: Resume = Resume.create_with_json(json.loads(resume_json_str))
+        ResumeTable.add_resume(user.user_id, resume)
+        return 'success', 200
+    @app.route('/databases/delete_resume', methods=['POST'])
+    @token_required
+    def delete_resume():
+        resume_id: str = request.args.get('resumeId', default="NO RESUME LOADED", type=str)
+        ResumeTable.delete_resume(resume_id)
+        return 'success', 200
+
     '''
     run_as_daemon
 
