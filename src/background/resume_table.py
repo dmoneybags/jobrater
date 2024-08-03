@@ -33,7 +33,10 @@ class ResumeTable:
         return """
             SELECT * FROM RESUMES WHERE UserId = %s
         """
-    
+    def __get_read_resume_by_id() -> str:
+        return """
+            SELECT * FROM RESUMES WHERE Id = %s
+        """
     '''
     add_resume
 
@@ -88,7 +91,7 @@ class ResumeTable:
         cursor.close()
         return 0
     '''
-    get_resumes
+    read_user_resumes
 
     returns all resumes assoiciated with a user
 
@@ -96,7 +99,7 @@ class ResumeTable:
 
     returns: list of resumes 
     '''
-    def get_resumes(user_id: UUID | str) -> list[Resume]:
+    def read_user_resumes(user_id: UUID | str) -> list[Resume]:
         DatabaseFunctions.MYDB.reconnect()
         cursor: MySQLCursor = DatabaseFunctions.MYDB.cursor(dictionary=True)
         user_id : str = str(user_id)
@@ -108,3 +111,23 @@ class ResumeTable:
         results_list : list[Resume] = [Resume.create_with_sql_row(row) for row in results]
         cursor.close()
         return results_list
+    '''
+    read_resume_by_id
+
+    reads resume by it's specific id
+
+    resume_id: the id of the resume we are reading
+
+    returns:
+
+    resume we read
+    '''
+    def read_resume_by_id(resume_id: int) -> Resume:
+        DatabaseFunctions.MYDB.reconnect()
+        cursor: MySQLCursor = DatabaseFunctions.MYDB.cursor(dictionary=True)
+        cursor.execute("USE JOBDB")
+        query: str = ResumeTable.__get_read_resume_by_id()
+        cursor.execute(query, (resume_id,))
+        result: Dict[str, RowItemType] = cursor.fetchone()
+        cursor.close()
+        return Resume.create_with_sql_row(result)

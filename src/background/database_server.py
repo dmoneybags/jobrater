@@ -34,6 +34,7 @@ from user_table import UserTable
 from job_table import JobTable
 from company_table import CompanyTable
 from resume_table import ResumeTable
+from resume_nlp.resume_comparison import ResumeComparison
 from company import Company
 from job import Job
 from user import User
@@ -270,7 +271,7 @@ class DatabaseServer:
         if not user:
             abort(404)
         jobs : list[Job] = UserJobTable.get_user_jobs(user.user_id)
-        resumes: list[Resume] = ResumeTable.get_resumes(user.user_id)
+        resumes: list[Resume] = ResumeTable.read_user_resumes(user.user_id)
         json_jobs : list[Dict] = [job.to_json() for job in jobs]
         json_resumes : list[Dict] = [resume.to_json() for resume in resumes]
         return json.dumps({"user": user.to_json(), "jobs": json_jobs, "resumes": json_resumes})
@@ -348,7 +349,22 @@ class DatabaseServer:
         resume_id: str = request.args.get('resumeId', default="NO RESUME LOADED", type=str)
         ResumeTable.delete_resume(resume_id)
         return 'success', 200
-
+    @app.route('/databases/compare_resumes', methods=['GET'])
+    @token_required
+    def compare_resumes():
+        token : str = request.headers.get('Authorization')
+        user : User | None = decode_user_from_token(token)
+        job_description: str = request.args.get('jobDescription', default="NO JOB DESCRIPTION LOADED", type=str)
+        resumes: list[Resume] = ResumeTable.read_user_resumes(user.user_id)
+        resume_comparison_data: Dict = {}
+        for resume in resumes:
+            similarity_matrix = ResumeComparison.get_similarity_matrix(job_description, resume)
+            sorted_index_list = ResumeComparison.compare_embeddings(similarity_matrix)
+            resume_comparison_data[resume.id] = {
+                "similarityMatrix": ResumeComparison.serialize_similarity_matrix(similarity_matrix),
+                "sortedIndexList": ResumeComparison.serialize_similarity_matrix(sorted_index_list)
+            }
+        return json.dumps(resume_comparison_data) 
     '''
     run_as_daemon
 
