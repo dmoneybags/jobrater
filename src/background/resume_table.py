@@ -71,7 +71,7 @@ class ResumeTable:
         print("RESUME SUCCESSFULLY ADDED")
         DatabaseFunctions.MYDB.commit()
         cursor.close()
-        return 0
+        return resume_json
     '''
     delete_resume
 

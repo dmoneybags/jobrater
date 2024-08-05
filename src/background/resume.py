@@ -2,6 +2,8 @@ from datetime import datetime
 from typing import Dict
 from mysql.connector.types import RowItemType
 import zlib
+from tika import parser
+import docx
 
 class Resume:
     '''
@@ -17,13 +19,25 @@ class Resume:
     file_text: str, readable text of the resume
     upload_date: datetime of the upload
     '''
-    def __init__(self, id: int, user_id: str, file_name: str, file_type: str, file_content: bytes, file_text: str, upload_date: datetime) -> None:
+    def __init__(self, id: int, user_id: str, file_name: str, file_type: str, file_content: bytes, upload_date: datetime, file_text=None) -> None:
         self.id = id
         self.user_id = user_id
         self.file_name = file_name
         self.file_type = file_type
         self.file_content = file_content
-        self.file_text = file_text
+        if file_text:
+            self.file_text = file_text
+        elif self.file_type == "pdf":
+            #not a readable str just needed for the parser function
+            file_content_str: str = file_content.decode("utf-8")
+            #front end will never know the text until we process the pd
+            self.file_text = parser.from_buffer(file_content_str)
+        elif self.file_type == "docx":
+            doc = docx.Document(file_content)
+            fullText = []
+            for para in doc.paragraphs:
+                fullText.append(para.text)
+            self.file_text = fullText.join("\n")
         self.upload_date = upload_date
     '''
     compress
@@ -78,8 +92,9 @@ class Resume:
         file_type: str = sql_query_row["FileType"]
         file_content: bytes = zlib.decompress(sql_query_row["FileContent"])
         file_text: str = Resume.decompress(sql_query_row["FileText"])
-        upload_date: str = sql_query_row["UploadDate"]
-        return cls(id, user_id, file_name, file_type, file_content, file_text, upload_date)
+        upload_date_str: str = sql_query_row["UploadDate"]
+        upload_date = datetime.strptime(upload_date_str, '%Y-%m-%d %H:%M:%S')
+        return cls(id, user_id, file_name, file_type, file_content, upload_date, file_text=file_text)
     '''
     create_with_json
 
@@ -105,9 +120,7 @@ class Resume:
         file_name: str = json["fileName"]
         file_type: str = json["fileType"]
         file_content: bytes = json["fileContent"].encode("utf-8")
-        file_text: str = json["fileText"]
-        upload_date: str = json["uploadDate"]
-        return cls(id, user_id, file_name, file_type, file_content, file_text, upload_date)
+        return cls(id, user_id, file_name, file_type, file_content, None)
     '''
     to_json
 
@@ -125,7 +138,7 @@ class Resume:
             "fileType": self.file_type,
             "fileContent": self.file_content.decode("utf-8"),
             "fileText": self.file_text,
-            "uploadDate": self.upload_date
+            "uploadDate": int(self.upload_date.timestamp())
         }
     '''
     to_sql_friendly_json
@@ -143,6 +156,6 @@ class Resume:
             "fileName": self.file_name,
             "fileType": self.file_type,
             "fileContent": zlib.compress(self.file_content),
-            "fileText": Resume.compress(self.file_text),
-            "uploadDate": self.upload_date
+            "fileText": Resume.compress(self.file_text)
         }
+    

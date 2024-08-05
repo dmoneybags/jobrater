@@ -339,8 +339,8 @@ class DatabaseServer:
     def add_resume():
         token : str = request.headers.get('Authorization')
         user : User | None = decode_user_from_token(token)
-        resume_json_str: str = request.args.get('resume', default="NO RESUME LOADED", type=str)
-        resume: Resume = Resume.create_with_json(json.loads(resume_json_str))
+        resume_json: Dict = request.get_json()["resume"]
+        resume: Resume = Resume.create_with_json(resume_json)
         ResumeTable.add_resume(user.user_id, resume)
         return 'success', 200
     @app.route('/databases/delete_resume', methods=['POST'])
