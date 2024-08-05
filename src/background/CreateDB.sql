@@ -37,6 +37,7 @@ CREATE TABLE Job
     CareerStage VARCHAR(20),
     Job VARCHAR(100),
     Company VARCHAR(50) NOT NULL,
+    Description LONGBLOB,
     -- uuid to keywords, one to many
     PaymentBase DECIMAL(9, 2),
     PaymentFreq VARCHAR(8),
@@ -93,5 +94,5 @@ CREATE TABLE Resumes
     FileText LONGBLOB NOT NULL,
     UploadDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 CONSTRAINT Resumes_PK PRIMARY KEY (id),
-CONSTRAINT Resumes_FK FOREIGN KEY (user_id) REFERENCES User(UserId)
+CONSTRAINT Resumes_FK FOREIGN KEY (UserId) REFERENCES User(UserId)
 );

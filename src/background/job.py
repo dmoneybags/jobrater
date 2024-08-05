@@ -6,6 +6,7 @@ from location import Location
 from mysql.connector.types import RowType, RowItemType
 from typing import Dict
 from location_finder import LocationFinder
+import zlib
 
 class JobInvalidData(Exception):
         def __init__(self, data: any, message : str ="INVALID DATA PASSED TO CONSTRUCTOR"):
@@ -54,7 +55,7 @@ class Job:
         job object with given data
     '''
     def __init__(self, job_id : str, applicants : int, career_stage : str, job_name : str, company : Company | None, 
-                 payment_base : Decimal | None, payment_freq : PaymentFrequency | None, payment_high : Decimal | None, location_str : str,
+                 description: str, payment_base : Decimal | None, payment_freq : PaymentFrequency | None, payment_high : Decimal | None, location_str : str,
                  mode: Mode, seconds_posted_ago : int, time_added : datetime, location_object : Location | None) -> None:
         self.job_id : str = job_id
         assert(self.job_id is not None)
@@ -62,6 +63,7 @@ class Job:
         self.career_stage : str = career_stage
         self.job_name : str = job_name
         self.company : Company | None = company
+        self.description : str = description
         self.payment_base : Decimal | None = payment_base
         self.payment_freq : PaymentFrequency | None = payment_freq
         self.payment_high : Decimal | None = payment_high
@@ -145,6 +147,9 @@ class Job:
         job_id : str = sql_query_row["JobId"]
         applicants : int = int(sql_query_row["Applicants"])
         career_stage : str = sql_query_row["CareerStage"]
+        decompressed_bytes: bytes = zlib.decompress(sql_query_row[description])
+        decompressed_description: str = decompressed_bytes.decode("utf-8")
+        description : str = decompressed_description
         job_name : str = sql_query_row["Job"]
         payment_base : Decimal = sql_query_row["PaymentBase"]
         try:
@@ -162,7 +167,7 @@ class Job:
         mode : Mode = Job.str_to_mode(sql_query_row["Mode"])
         seconds_posted_ago : int = sql_query_row["SecondsPostedAgo"]
         time_added : datetime = sql_query_row["TimeAdded"]
-        return cls(job_id, applicants, career_stage, job_name, company, payment_base, payment_freq, payment_high, location_str, mode, seconds_posted_ago,
+        return cls(job_id, applicants, career_stage, job_name, company, description, payment_base, payment_freq, payment_high, location_str, mode, seconds_posted_ago,
                    time_added, location)
     '''
     create_with_json
@@ -184,6 +189,7 @@ class Job:
         job_id : str = json_object["jobId"]
         applicants : int = int(json_object["applicants"])
         career_stage : str = json_object["careerStage"]
+        description : str = json_object["description"]
         job_name : str = json_object["jobName"]
         try:
             payment_base : Decimal = json_object["paymentBase"]
@@ -207,7 +213,7 @@ class Job:
             time_added : datetime = datetime.fromtimestamp(float(json_object["timeAdded"]))
         except KeyError:
             time_added = None
-        return cls(job_id, applicants, career_stage, job_name, company, payment_base, payment_freq, payment_high, location_str, mode, seconds_posted_ago,
+        return cls(job_id, applicants, career_stage, job_name, company, description, payment_base, payment_freq, payment_high, location_str, mode, seconds_posted_ago,
                    time_added, location)
     '''
     to_json
@@ -226,6 +232,7 @@ class Job:
             "careerStage" : self.career_stage,
             "jobName" : self.job_name,
             "company" : self.company.to_json(),
+            "description" : self.description,
             "paymentBase": float(self.payment_base) if self.payment_base is not None else None,
             "paymentHigh": float(self.payment_high) if self.payment_high is not None else None,
             "paymentFreq" : Job.payment_frequency_to_str(self.payment_freq) if self.payment_freq else None,
@@ -247,11 +254,14 @@ class Job:
         Dict
     '''
     def to_sql_friendly_json(self) -> Dict:
+        description_bytes: bytes = self.description.encode("utf-8")
+        compressed_description: bytes = zlib.compress(description_bytes)
         sql_friendly_dict : Dict = {
             "jobId" : self.job_id,
             "applicants" : self.applicants,
             "careerStage" : self.career_stage,
             "job" : self.job_name,
+            "description" : compressed_description,
             "company" : self.company.company_name,
             "paymentBase" : self.payment_base if self.payment_base else None,
             "paymentHigh": self.payment_high,

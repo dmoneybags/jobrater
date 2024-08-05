@@ -133,6 +133,20 @@ export class LinkedInScrapingFunctions {
         return [company, job];
     }
     /**
+     * getJobDescription
+     * 
+     * scrapes the page for the job description
+     * 
+     * @returns {string} job description
+     */
+    static getJobDescription = ():string | null => {
+        const jobDescriptionElem: Element = document.getElementsByClassName("jobs-description")[0]
+        if (!jobDescriptionElem){
+            return null
+        }
+        return jobDescriptionElem.textContent!.trim()
+    }
+    /**
      * getTopBoxData
      * 
      * "Top box" data contains how long the job was posted ago, the locationstr, and the num applicants
@@ -209,6 +223,8 @@ export class LinkedInScrapingFunctions {
         //Load the info it
         jobData["company"]["companyName"] = company;
         jobData["job"] = job;
+        let description = LinkedInScrapingFunctions.getJobDescription();
+        jobData["description"] = description;
         //Top box shows location, days posted ago, and applicants
         const topBoxData = LinkedInScrapingFunctions.getTopBoxData();
         const descriptionData = LinkedInScrapingFunctions.getJobInfoData();

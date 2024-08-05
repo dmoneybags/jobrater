@@ -339,4 +339,52 @@ export class DatabaseCalls{
             xhr.send();
         });
     }
+    /**
+     * sendMessageToCompareResumes
+     * 
+     * sends a message to our backend to compare each of a users resumes to a
+     * job description 
+     * 
+     * the json comes in in the form of 
+     * 
+     * {
+     *  resumeId{
+     *      {
+     *      similarityMatrix
+     *      sortedIndexList
+     *      }
+     *  }
+     * }
+     * @param {string} jobId
+     * @returns {Record<string, any>} comparison data
+     */
+    static sendMessageToCompareResumes = (jobId: string) => {
+        //create a promise to resolve it asynchronously
+        return new Promise((resolve, reject) => {
+            //Our python program runs on port 5007 on our local server
+            var xhr = new XMLHttpRequest();
+            //call an http request
+            //we do NOT add any args, the token tells it which user to delete
+            xhr.open('GET', DATABASESERVER + 'databases/compare_resumes?jobId=' + jobId, true);
+            xhr.onload = function () {
+                //It suceeded
+                if (xhr.status === 200) {
+                    //change it to json
+                    const response: string = xhr.responseText;
+                    resolve(JSON.parse(response));
+                } else {
+                    //Didnt get a sucessful message
+                    console.error('Request failed. Status:', xhr.status);
+                    reject(new Error("Got bad status of " + xhr.status));
+                }
+            };
+            //Couldnt load the http request
+            xhr.onerror = function () {
+                console.error('Request failed. Network error');
+                reject(new Error("Got bad status of " + xhr.status));
+            };
+            //send our response
+            xhr.send();
+        });
+    }
 }

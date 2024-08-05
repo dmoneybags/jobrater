@@ -354,11 +354,12 @@ class DatabaseServer:
     def compare_resumes():
         token : str = request.headers.get('Authorization')
         user : User | None = decode_user_from_token(token)
-        job_description: str = request.args.get('jobDescription', default="NO JOB DESCRIPTION LOADED", type=str)
+        job_id: str = request.args.get('jobId', default="NO JOB DESCRIPTION LOADED", type=str)
+        job = JobTable.read_job_by_id(job_id)
         resumes: list[Resume] = ResumeTable.read_user_resumes(user.user_id)
         resume_comparison_data: Dict = {}
         for resume in resumes:
-            similarity_matrix = ResumeComparison.get_similarity_matrix(job_description, resume)
+            similarity_matrix = ResumeComparison.get_similarity_matrix(job.description, resume)
             sorted_index_list = ResumeComparison.compare_embeddings(similarity_matrix)
             resume_comparison_data[resume.id] = {
                 "similarityMatrix": ResumeComparison.serialize_similarity_matrix(similarity_matrix),

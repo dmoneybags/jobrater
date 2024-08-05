@@ -1,7 +1,6 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'background')))
-
 import json
 from auth_logic import decode_user_from_token, get_token
 from uuid import uuid1
@@ -12,6 +11,8 @@ from company_table import CompanyTable
 from job import Job
 from job_table import JobTable
 from user_job_table import UserJobTable
+from resume_table import Resume, ResumeTable
+from tests.mocks.objects import MockObjects
 
 
 #TESTS JUST DB CODE, NO SERVERS
@@ -181,6 +182,40 @@ def user_job_tests(user_id):
     assert(job.company.company_name == "Apple")
     print("JOB PERSISTS TEST PASSED \n\n")
 
+def resume_tests():
+    print("RUNNING RESUME TESTS")
+    print("TESTING THAT WE CAN PROPERLY READ DOCX TEST")
+    with open("./__mocks__/resume.docx", "r") as doc:
+        word_bytes = doc.read()
+        resume = Resume(None, None, "resume.docx", "docx", word_bytes, None)
+        if resume.file_text != MockObjects.docx_resume_text:
+            print("DOCX TEXT OF " + MockObjects.docx_resume_text)
+            print("IS NOT EQUAL TO " + resume.file_text)
+            assert(False)
+        print("TEXT MATCHED!")
+    print("TESTING THAT WE CAN PROPERLY READ PDF TEST")
+    with open("./__mocks__/resume.pdf", "r") as doc:
+        word_bytes = doc.read()
+        resume = Resume(None, None, "resume.pdf", "pdf", word_bytes, None)
+        if resume.file_text != MockObjects.docx_resume_text:
+            print("PDF TEXT OF " + MockObjects.pdf_resume_text)
+            print("IS NOT EQUAL TO " + resume.file_text)
+            assert(False)
+        print("TEXT MATCHED!")
+    print("TESTING ADDING A RESUME TO THE DB")
+    dummy_user_id = "QWIRJWQRJQJRWQO"
+    resume.user_id = dummy_user_id
+    ResumeTable.add_resume(user_id, resume)
+    reread_resume = ResumeTable.read_user_resumes(dummy_user_id)[0]
+    assert(resume.user_id == reread_resume.user_id)
+    assert(resume.file_content == reread_resume.file_content)
+    assert(resume.file_text == reread_resume.file_text)
+    assert(resume.file_name == reread_resume.file_name)
+    print("TEST PASSED")
+    print("TESTING DELETING A RESUME")
+    ResumeTable.delete_resume(reread_resume.id)
+    assert(len(ResumeTable.read_user_resumes(dummy_user_id)) == 0)
+    print("TEST PASSED")
 if __name__ == "__main__":
     user_id = user_tests()
     company_tests()
