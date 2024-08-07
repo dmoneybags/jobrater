@@ -83,6 +83,7 @@ class JobLocationTable:
         job_json : Dict = job.to_sql_friendly_json()
         company : str = job_json["company"]
         location_str : str = job_json["locationStr"]
+        print(f"LOCATION_STR: {location_str}")
         query_str : str = company + " " + location_str
         print(f"QUERY_STR: {query_str}")
         location_json : Dict = location.to_json()

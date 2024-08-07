@@ -47,10 +47,8 @@ import sys
 import os
 import traceback
 import asyncio
-import signal
+import time
 from functools import partial
-
-signal.signal(signal.SIGTERM, partial(HelperFunctions.handle_sigterm, caller_name="database_server"))
 
 #Set up our server using flask
 app = Flask(__name__)
@@ -92,12 +90,24 @@ class DatabaseServer:
             job_json : Dict = json.loads(message)
             print("=============== RECIEVED JOB JSON OF =========== \n\n")
             print(json.dumps(job_json, indent=4))
-            companyName: str = job_json["company"]["companyName"]
-            if (not CompanyTable.read_company_by_id("company") and CANSCRAPEGLASSDOOR):
+            company_name: str = job_json["company"]["companyName"]
+            if (not CompanyTable.read_company_by_id(company_name) and CANSCRAPEGLASSDOOR):
+                t1 = time.time()
                 print("RETRIEVING COMPANY FROM GLASSDOOR")
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                job_json["company"] = loop.run_until_complete(get_company_data_async(companyName))
+                company_data: Dict = loop.run_until_complete(get_company_data_async(company_name))
+                company : Company = Company(company_name, company_data["businessOutlookRating"], 
+                                            company_data["careerOpportunitiesRating"], company_data["ceoRating"],
+                                            company_data["compensationAndBenefitsRating"],
+                                            company_data["cultureAndValuesRating"],
+                                            company_data["diversityAndInclusionRating"],
+                                            company_data["seniorManagementRating"],
+                                            company_data["workLifeBalanceRating"],
+                                            company_data["overallRating"])
+                job_json["company"] = company.to_json()
+                t2 = time.time()
+                print("Scraping glassdoor took: " + str(t2 - t1) + " seconds")
             print("\n\n")
         except json.JSONDecodeError:
             print("YOUR JOB JSON OF " + message + "IS INVALID")
@@ -341,8 +351,8 @@ class DatabaseServer:
         user : User | None = decode_user_from_token(token)
         resume_json: Dict = request.get_json()["resume"]
         resume: Resume = Resume.create_with_json(resume_json)
-        ResumeTable.add_resume(user.user_id, resume)
-        return 'success', 200
+        resume_json: Dict = ResumeTable.add_resume(user.user_id, resume)
+        return json.dumps(resume_json)
     @app.route('/databases/delete_resume', methods=['POST'])
     @token_required
     def delete_resume():
@@ -391,11 +401,21 @@ class DatabaseServer:
         except Exception as e:
             print(e)
             traceback.print_exc()
+    def shutdown():
+        print("Handling database server shutdown")
+        HelperFunctions.handle_sigterm("database_server")
+        print("Shutdown successful")
+
 if __name__ == '__main__':
-    # Check for the -I argument
-    if '-i' in sys.argv:
-        # Run the script normally without daemonizing
-        print("Running in non-daemon mode")
-        app.run(debug=False, port=PORT)
-    else:
-        DatabaseServer.run_as_daemon()
+    try:
+        # Check for the -I argument
+        if '-i' in sys.argv:
+            # Run the script normally without daemonizing
+            print("Running in non-daemon mode")
+            app.run(debug=False, port=PORT)
+        else:
+            DatabaseServer.run_as_daemon()
+    except Exception as e: 
+        raise e
+    finally:
+        DatabaseServer.shutdown()

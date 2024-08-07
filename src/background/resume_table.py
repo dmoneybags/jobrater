@@ -47,7 +47,7 @@ class ResumeTable:
     '''
     def add_resume(user_id: UUID | str, resume: Resume) -> int:
         user_id : str = str(user_id)
-        print("ADDING USER JOB WITH USER ID " + user_id + " AND FILENAME OF " + resume.file_name)
+        print("ADDING RESUME WITH USER ID " + user_id + " AND FILENAME OF " + resume.file_name)
         DatabaseFunctions.MYDB.reconnect()
         cursor : MySQLCursor = DatabaseFunctions.MYDB.cursor()
         #Switch to our jobDb
@@ -55,7 +55,7 @@ class ResumeTable:
         query : str = ResumeTable.__get_add_resume_query()
         resume_json: Dict = resume.to_sql_friendly_json()
         resume_values: list = [
-            resume_json["userId"],
+            user_id,
             resume_json["fileName"],
             resume_json["fileType"],
             resume_json["fileContent"],
@@ -71,6 +71,7 @@ class ResumeTable:
         print("RESUME SUCCESSFULLY ADDED")
         DatabaseFunctions.MYDB.commit()
         cursor.close()
+        resume_json = resume.to_json()
         return resume_json
     '''
     delete_resume

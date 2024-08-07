@@ -103,7 +103,7 @@ export class DatabaseCalls{
      * 
      * Gets user data from db using the token to identify the user
      * 
-     * @returns {Promise<Record<string, any>>} user and jobs
+     * @returns {Promise<Record<string, any>>} user, jobs, and resumes
      */
     static getUserData = (): Promise<Record<string, any>> => {
         return new Promise((resolve, reject) => {
@@ -117,7 +117,7 @@ export class DatabaseCalls{
                         const jsonJobs: Record<string, any>[] = response["jobs"];
                         const jsonResumes: Record<string, any>[] = response["resumes"];
                         const jobs : Job[] = jsonJobs.map((job) => JobFactory.generateFromJson(job));
-                        const resumes : Resume[] = jsonJobs.map((resume) => ResumeFactory.generateFromJson(resume));
+                        const resumes : Resume[] = jsonResumes.map((resume) => ResumeFactory.generateFromJson(resume));
                         resolve({
                             user: UserFactory.generateFromJson(response["user"]),
                             jobs: jobs,
@@ -277,6 +277,7 @@ export class DatabaseCalls{
             //call an http request
             //we do NOT add any args, the token tells it which user to delete
             xhr.open('POST', DATABASESERVER + 'databases/add_resume', true);
+            xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
             xhr.onload = function () {
                 //It suceeded
                 if (xhr.status === 200) {

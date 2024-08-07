@@ -79,7 +79,7 @@ export class ResumeFactory {
         const fileType = jsonObject["fileType"];
         const fileContent = new Uint8Array(jsonObject["fileContent"]);
         const fileText = jsonObject["fileText"];
-        const uploadDate = new Date(Number(jsonObject["uploadDate"] * 1000));
+        const uploadDate = jsonObject["uploadDate"] ? new Date(Number(jsonObject["uploadDate"] * 1000)) : null;
         return new Resume(id, userId, fileName, fileType, fileContent, fileText, uploadDate);
     }
     /**

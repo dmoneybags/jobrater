@@ -1,6 +1,6 @@
 //Tests for the file Company.ts
 import { Company, CompanyFactory } from "../content/company"
-import { MockObjects } from "./__mocks__/objects";
+import { MockObjects } from "./mocks/objects";
 describe("Company.ts file tests", () => {
     it("tests that companies can properly load values", () => {
         const company : Company = MockObjects.apple_with_data_company

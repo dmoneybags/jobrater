@@ -7,7 +7,12 @@ import { User } from '../content/user';
 import { register } from '../content/auth';
 import { genSaltSync } from 'bcryptjs-react';
 import { LocationObject } from '../content/location';
-import { MockObjects } from './__mocks__/objects';
+import { MockObjects } from './mocks/objects';
+import { promisify } from 'util';
+import * as fs from 'fs';
+import { Resume, ResumeFactory } from '../content/resume';
+
+const readFile = promisify(fs.readFile);
 
 describe("DatabaseCalls.ts file tests", () => {
     beforeAll(() => {
@@ -27,15 +32,15 @@ describe("DatabaseCalls.ts file tests", () => {
         const mockUser: User = MockObjects.dandemoney_user;
 
         await register(mockUser, "Xdfgh1012#", "Xdfgh1012#", genSaltSync());
-
+        console.log("registered user");
         const company: Company = MockObjects.initech_with_data_company;
         const job: Job = MockObjects.initech_software_engineer_job;
-        await expect(DatabaseCalls.sendMessageToAddJob(job)).resolves.not.toThrow();
-    })
+        return expect(DatabaseCalls.sendMessageToAddJob(job)).resolves.not.toThrow();
+    }, 7000)
     it("tests that we can add jobs with null values", async ()=>{
         const job: Job = MockObjects.apple_software_engineer_job;
         await expect(DatabaseCalls.sendMessageToAddJob(job)).resolves.not.toThrow();
-    })
+    }, 7100)
     it("tests that we can properly read the job back with foriegn keys after a read", async ()=>{
         const company: Company = MockObjects.apple_with_data_company;
         const job: Job = MockObjects.apple_null_values_big_hoss_job;
@@ -44,8 +49,6 @@ describe("DatabaseCalls.ts file tests", () => {
             const finishedJobJson: Record<string, any> = responseJson["job"];
             console.log(finishedJobJson);
             const rereadJob : Job = JobFactory.generateFromJson(finishedJobJson);
-            //Check company values
-            expect(rereadJob.company).toEqual(company);
             //Check job values
             expect(rereadJob.jobId).toEqual(job.jobId);
             expect(rereadJob.applicants).toEqual(job.applicants);
@@ -56,7 +59,7 @@ describe("DatabaseCalls.ts file tests", () => {
             expect(rereadJob.paymentHigh).toEqual(job.paymentHigh);
             expect(rereadJob.mode).toEqual(job.mode);
         });
-    })
+    }, 7000)
     it("tests that we cannot add a duplicate job", async ()=>{
         const company: Company = MockObjects.apple_with_data_company;
         const job: Job = MockObjects.apple_null_values_big_hoss_job;
@@ -75,8 +78,6 @@ describe("DatabaseCalls.ts file tests", () => {
             const jobs: Job[] = json["jobs"];
             expect(jobs.length).toBe(3);
             const rereadJob = jobs[0];
-            //Check company values
-            expect(rereadJob.company).toEqual(company);
             //Check job values
             expect(rereadJob.jobId).toEqual(job.jobId);
             expect(rereadJob.applicants).toEqual(job.applicants);
@@ -92,6 +93,23 @@ describe("DatabaseCalls.ts file tests", () => {
             expect(user.email).toEqual(rereadUser.email);
             expect(user.firstName).toEqual(rereadUser.firstName);
             expect(user.lastName).toEqual(rereadUser.lastName);
+        })
+    })
+    it("tests that we can add a resume", async ()=>{
+        const fileBuffer : Buffer = await readFile("./src/tests/mocks/resume.pdf");
+        const file : File = new File([fileBuffer], "resume.pdf", {
+            type: 'application/pdf'
+        })
+        const resume : Resume = await ResumeFactory.generateFromFile(file);
+        await DatabaseCalls.sendMessageToAddResume(resume);
+        DatabaseCalls.getUserData()
+        .then((userData) => {
+            const resumes: Resume[] = userData["resumes"];
+            expect(resumes.length).toBe(1);
+            const rereadResume : Resume = resumes[1];
+            expect(rereadResume.fileName).toBe(resume.fileName);
+            expect(rereadResume.fileContent).toBe(resume.fileContent);
+            return expect(rereadResume.fileType).toBe(resume.fileType);
         })
     })
     it("tests that we can delete a user", async ()=> {

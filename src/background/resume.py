@@ -28,16 +28,15 @@ class Resume:
         if file_text:
             self.file_text = file_text
         elif self.file_type == "pdf":
-            #not a readable str just needed for the parser function
-            file_content_str: str = file_content.decode("utf-8")
             #front end will never know the text until we process the pd
-            self.file_text = parser.from_buffer(file_content_str)
+            result = parser.from_buffer(file_content)
+            self.file_text = result["content"]
         elif self.file_type == "docx":
             doc = docx.Document(file_content)
-            fullText = []
+            full_text = []
             for para in doc.paragraphs:
-                fullText.append(para.text)
-            self.file_text = fullText.join("\n")
+                full_text.append(para.text)
+            self.file_text = "\n".join(full_text)
         self.upload_date = upload_date
     '''
     compress
@@ -92,8 +91,7 @@ class Resume:
         file_type: str = sql_query_row["FileType"]
         file_content: bytes = zlib.decompress(sql_query_row["FileContent"])
         file_text: str = Resume.decompress(sql_query_row["FileText"])
-        upload_date_str: str = sql_query_row["UploadDate"]
-        upload_date = datetime.strptime(upload_date_str, '%Y-%m-%d %H:%M:%S')
+        upload_date: datetime = sql_query_row["UploadDate"]
         return cls(id, user_id, file_name, file_type, file_content, upload_date, file_text=file_text)
     '''
     create_with_json
@@ -119,7 +117,7 @@ class Resume:
         user_id: str = json["userId"]
         file_name: str = json["fileName"]
         file_type: str = json["fileType"]
-        file_content: bytes = json["fileContent"].encode("utf-8")
+        file_content: bytes = bytes(json["fileContent"])
         return cls(id, user_id, file_name, file_type, file_content, None)
     '''
     to_json
@@ -136,9 +134,9 @@ class Resume:
             "userId": self.user_id,
             "fileName": self.file_name,
             "fileType": self.file_type,
-            "fileContent": self.file_content.decode("utf-8"),
+            "fileContent": list(self.file_content),
             "fileText": self.file_text,
-            "uploadDate": int(self.upload_date.timestamp())
+            "uploadDate": int(self.upload_date.timestamp()) if self.upload_date else None
         }
     '''
     to_sql_friendly_json

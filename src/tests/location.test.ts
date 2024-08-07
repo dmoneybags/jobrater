@@ -1,6 +1,6 @@
 //Tests for the file job.ts
 import { LocationObject } from "../content/location"
-import { MockObjects } from "./__mocks__/objects";
+import { MockObjects } from "./mocks/objects";
 describe("Job.ts file tests", () => {
     it("tests that companies can properly load values", () => {
         const location : LocationObject = MockObjects.apple_location

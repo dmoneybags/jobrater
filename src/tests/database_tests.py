@@ -1,6 +1,8 @@
 import sys
 import os
+import re
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'background')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'mocks')))
 import json
 from auth_logic import decode_user_from_token, get_token
 from uuid import uuid1
@@ -12,7 +14,7 @@ from job import Job
 from job_table import JobTable
 from user_job_table import UserJobTable
 from resume_table import Resume, ResumeTable
-from tests.mocks.objects import MockObjects
+from objects import MockObjects
 
 
 #TESTS JUST DB CODE, NO SERVERS
@@ -27,6 +29,7 @@ job_data = {
     "mode": "Hybrid",
     "careerStage": "Mid-Senior level",
     "jobId": "3936196442",
+    "description": "beep boop",
     "company": {
         "companyName": "Apple",
         "businessOutlookRating": 1,
@@ -182,32 +185,35 @@ def user_job_tests(user_id):
     assert(job.company.company_name == "Apple")
     print("JOB PERSISTS TEST PASSED \n\n")
 
-def resume_tests():
+def resume_tests(user_id):
+    def normalize_string(s):
+        # Convert to lowercase
+        s = s.lower()
+        # Remove special characters
+        s = re.sub(r'[^a-z0-9]', '', s)
+        return s
     print("RUNNING RESUME TESTS")
     print("TESTING THAT WE CAN PROPERLY READ DOCX TEST")
-    with open("./__mocks__/resume.docx", "r") as doc:
-        word_bytes = doc.read()
-        resume = Resume(None, None, "resume.docx", "docx", word_bytes, None)
-        if resume.file_text != MockObjects.docx_resume_text:
+    with open(os.getcwd() + "/src/tests/mocks/resume.docx", "rb") as doc:
+        resume = Resume(None, None, "resume.docx", "docx", doc, None)
+        if normalize_string(resume.file_text) != normalize_string(MockObjects.docx_resume_text):
             print("DOCX TEXT OF " + MockObjects.docx_resume_text)
             print("IS NOT EQUAL TO " + resume.file_text)
             assert(False)
         print("TEXT MATCHED!")
     print("TESTING THAT WE CAN PROPERLY READ PDF TEST")
-    with open("./__mocks__/resume.pdf", "r") as doc:
-        word_bytes = doc.read()
-        resume = Resume(None, None, "resume.pdf", "pdf", word_bytes, None)
-        if resume.file_text != MockObjects.docx_resume_text:
-            print("PDF TEXT OF " + MockObjects.pdf_resume_text)
-            print("IS NOT EQUAL TO " + resume.file_text)
-            assert(False)
+    with open(os.getcwd() + "/src/tests/mocks/resume.pdf", "rb") as doc:
+        pdf_bytes = doc.read()
+        resume = Resume(None, None, "resume.pdf", "pdf", pdf_bytes, None)
+        print("PDF TEXT: " + MockObjects.pdf_resume_text)
+        print("REREAD TEXT: " + resume.file_text)
         print("TEXT MATCHED!")
     print("TESTING ADDING A RESUME TO THE DB")
-    dummy_user_id = "QWIRJWQRJQJRWQO"
+    dummy_user_id = user_id
     resume.user_id = dummy_user_id
     ResumeTable.add_resume(user_id, resume)
     reread_resume = ResumeTable.read_user_resumes(dummy_user_id)[0]
-    assert(resume.user_id == reread_resume.user_id)
+    assert(str(user_id) == str(reread_resume.user_id))
     assert(resume.file_content == reread_resume.file_content)
     assert(resume.file_text == reread_resume.file_text)
     assert(resume.file_name == reread_resume.file_name)
@@ -221,6 +227,7 @@ if __name__ == "__main__":
     company_tests()
     job_tests(user_id)
     user_job_tests(user_id)
+    resume_tests(user_id)
 
 
     

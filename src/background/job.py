@@ -147,7 +147,7 @@ class Job:
         job_id : str = sql_query_row["JobId"]
         applicants : int = int(sql_query_row["Applicants"])
         career_stage : str = sql_query_row["CareerStage"]
-        decompressed_bytes: bytes = zlib.decompress(sql_query_row[description])
+        decompressed_bytes: bytes = zlib.decompress(sql_query_row["Description"])
         decompressed_description: str = decompressed_bytes.decode("utf-8")
         description : str = decompressed_description
         job_name : str = sql_query_row["Job"]
@@ -184,7 +184,7 @@ class Job:
         company : Company = Company.try_create_with_json(json_object["company"])
         try:
             json_object["location"]["addressStr"]
-        except KeyError:
+        except TypeError:
             location : Location | None = LocationFinder.try_get_company_address(json_object["company"], json_object["locationStr"])
         job_id : str = json_object["jobId"]
         applicants : int = int(json_object["applicants"])
