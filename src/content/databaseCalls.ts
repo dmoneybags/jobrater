@@ -19,6 +19,7 @@ adds new users to db
 */
 import { UserFactory, User } from "./user";
 import { Job, JobFactory } from "./job"
+import { Resume, ResumeFactory } from "./resume";
 
 const DATABASESERVER = 'http://localhost:5001/'
 export class DatabaseCalls{
@@ -102,7 +103,7 @@ export class DatabaseCalls{
      * 
      * Gets user data from db using the token to identify the user
      * 
-     * @returns {Promise<Record<string, any>>} user and jobs
+     * @returns {Promise<Record<string, any>>} user, jobs, and resumes
      */
     static getUserData = (): Promise<Record<string, any>> => {
         return new Promise((resolve, reject) => {
@@ -114,10 +115,13 @@ export class DatabaseCalls{
                         const response: Record<string, any> = JSON.parse(xhr.responseText);
                         console.log(`Read user data of ${xhr.responseText}`);
                         const jsonJobs: Record<string, any>[] = response["jobs"];
+                        const jsonResumes: Record<string, any>[] = response["resumes"];
                         const jobs : Job[] = jsonJobs.map((job) => JobFactory.generateFromJson(job));
+                        const resumes : Resume[] = jsonResumes.map((resume) => ResumeFactory.generateFromJson(resume));
                         resolve({
                             user: UserFactory.generateFromJson(response["user"]),
-                            jobs: jobs
+                            jobs: jobs,
+                            resumes: resumes
                         });
                     } catch (error) {
                         console.error('Error parsing JSON response', error);
@@ -242,6 +246,133 @@ export class DatabaseCalls{
                     console.log(response)
                     //resolve the token
                     resolve(response);
+                } else {
+                    //Didnt get a sucessful message
+                    console.error('Request failed. Status:', xhr.status);
+                    reject(new Error("Got bad status of " + xhr.status));
+                }
+            };
+            //Couldnt load the http request
+            xhr.onerror = function () {
+                console.error('Request failed. Network error');
+                reject(new Error("Got bad status of " + xhr.status));
+            };
+            //send our response
+            xhr.send();
+        });
+    }
+    /**
+     * sendMessageToAddResume
+     * 
+     * Sends a message to our backend to add a resume
+     * 
+     * @param {Resume} resume, the resume we are going to add
+     * @returns {Resume} the more processed resume our backend returned
+     */
+    static sendMessageToAddResume = (resumeObj: Resume):Promise<Resume> => {
+        //create a promise to resolve it asynchronously
+        return new Promise((resolve, reject) => {
+            //Our python program runs on port 5007 on our local server
+            var xhr = new XMLHttpRequest();
+            //call an http request
+            //we do NOT add any args, the token tells it which user to delete
+            xhr.open('POST', DATABASESERVER + 'databases/add_resume', true);
+            xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+            xhr.onload = function () {
+                //It suceeded
+                if (xhr.status === 200) {
+                    //change it to json
+                    const response: string = xhr.responseText;
+                    const responseJson: Record<string, any> = JSON.parse(response);
+                    //resolve the token
+                    resolve(ResumeFactory.generateFromJson(responseJson));
+                } else {
+                    //Didnt get a sucessful message
+                    console.error('Request failed. Status:', xhr.status);
+                    reject(new Error("Got bad status of " + xhr.status));
+                }
+            };
+            //Couldnt load the http request
+            xhr.onerror = function () {
+                console.error('Request failed. Network error');
+                reject(new Error("Got bad status of " + xhr.status));
+            };
+            //send our response
+            xhr.send(JSON.stringify({
+                resume: resumeObj.toJson()
+            }));
+        });
+    }
+    /**
+     * sendMessageToDeleteResume
+     * 
+     * Sends a message to our backend to delete a resume
+     * 
+     * @param {Resume} resume, the resume we are going to add
+     * @returns {Promise<string>}
+     */
+    static sendMessageToDeleteResume = (resume: Resume):Promise<string> => {
+        //create a promise to resolve it asynchronously
+        return new Promise((resolve, reject) => {
+            //Our python program runs on port 5007 on our local server
+            var xhr = new XMLHttpRequest();
+            //call an http request
+            //we do NOT add any args, the token tells it which user to delete
+            xhr.open('POST', DATABASESERVER + 'databases/delete_resume?id=' + String(resume.id), true);
+            xhr.onload = function () {
+                //It suceeded
+                if (xhr.status === 200) {
+                    //change it to json
+                    const response: string = xhr.responseText;
+                    resolve(response);
+                } else {
+                    //Didnt get a sucessful message
+                    console.error('Request failed. Status:', xhr.status);
+                    reject(new Error("Got bad status of " + xhr.status));
+                }
+            };
+            //Couldnt load the http request
+            xhr.onerror = function () {
+                console.error('Request failed. Network error');
+                reject(new Error("Got bad status of " + xhr.status));
+            };
+            //send our response
+            xhr.send();
+        });
+    }
+    /**
+     * sendMessageToCompareResumes
+     * 
+     * sends a message to our backend to compare each of a users resumes to a
+     * job description 
+     * 
+     * the json comes in in the form of 
+     * 
+     * {
+     *  resumeId{
+     *      {
+     *      similarityMatrix
+     *      sortedIndexList
+     *      }
+     *  }
+     * }
+     * @param {string} jobId
+     * @returns {Record<string, any>} comparison data
+     */
+    static sendMessageToCompareResumes = (jobId: string) => {
+        //create a promise to resolve it asynchronously
+        return new Promise((resolve, reject) => {
+            //Our python program runs on port 5007 on our local server
+            var xhr = new XMLHttpRequest();
+            //call an http request
+            //we do NOT add any args, the token tells it which user to delete
+            xhr.open('GET', DATABASESERVER + 'databases/compare_resumes?jobId=' + jobId, true);
+            xhr.onload = function () {
+                //It suceeded
+                if (xhr.status === 200) {
+                    //change it to json
+                    const response: string = xhr.responseText;
+                    resolve(JSON.parse(response));
                 } else {
                     //Didnt get a sucessful message
                     console.error('Request failed. Status:', xhr.status);

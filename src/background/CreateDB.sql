@@ -37,6 +37,7 @@ CREATE TABLE Job
     CareerStage VARCHAR(20),
     Job VARCHAR(100),
     Company VARCHAR(50) NOT NULL,
+    Description LONGBLOB,
     -- uuid to keywords, one to many
     PaymentBase DECIMAL(9, 2),
     PaymentFreq VARCHAR(8),
@@ -85,12 +86,13 @@ CONSTRAINT UserLocation_FK FOREIGN KEY (UserIdFk) REFERENCES User(UserId)
 );
 CREATE TABLE Resumes
 (
-    id INT AUTO_INCREMENT,
-    user_id VARCHAR(36),
-    file_name VARCHAR(255),
-    file_type VARCHAR(50),
-    file_content LONGBLOB,
-    upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    Id INT AUTO_INCREMENT,
+    UserId VARCHAR(36) NOT NULL,
+    FileName VARCHAR(255) NOT NULL,
+    FileType VARCHAR(50) NOT NULL,
+    FileContent LONGBLOB NOT NULL,
+    FileText LONGBLOB NOT NULL,
+    UploadDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 CONSTRAINT Resumes_PK PRIMARY KEY (id),
-CONSTRAINT Resumes_FK FOREIGN KEY (user_id) REFERENCES User(UserId)
+CONSTRAINT Resumes_FK FOREIGN KEY (UserId) REFERENCES User(UserId)
 );

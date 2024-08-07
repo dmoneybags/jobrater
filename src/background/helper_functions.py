@@ -49,8 +49,6 @@ class HelperFunctions:
     args:
         caller_name: the name of the caller, helps us locate the pid file
     '''
-    def handle_sigterm(signum, frame, caller_name: str):
+    def handle_sigterm(caller_name: str):
         print("Received SIGTERM. Shutting down gracefully...")
         HelperFunctions.remove_pid_file(caller_name)
-        # Perform any cleanup or shutdown actions here
-        sys.exit(0)

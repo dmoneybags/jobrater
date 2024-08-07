@@ -4,7 +4,7 @@ import { login, register, getSalt } from '../content/auth';
 import { User } from '../content/user';
 import { LocalStorageHelper } from '../content/localStorageHelper'
 import { genSaltSync } from 'bcryptjs-react';
-import { MockObjects } from './__mocks__/objects';
+import { MockObjects } from './mocks/objects';
 
 describe("Auth.ts file tests", () => {
   beforeAll(() => {

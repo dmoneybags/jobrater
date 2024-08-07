@@ -45,9 +45,15 @@ from bs4 import BeautifulSoup
 import brotli
 from html import escape
 from typing import Dict, List, Optional, Tuple, TypedDict
-from urllib.parse import urljoin
-from loguru import logger as log
 from random import choice
+from threading import Lock
+import logging
+from selenium.webdriver.remote.remote_connection import LOGGER
+import time
+
+LOGGER.setLevel(logging.DEBUG)
+
+os.environ['MOZ_HEADLESS'] = '1'
 
 def get_random_header():
     headers_list : list[Dict] = [
@@ -137,8 +143,6 @@ def get_driver(headless: bool = True):
     proxy.ssl_proxy = "127.0.0.1:8888"
     # Set up the headers
     header: Dict = get_random_header()
-    print("Using headers: ")
-    print(header)
     profile = webdriver.FirefoxProfile()
     profile.set_preference("intl.accept_languages", "en-US,en;q=0.9")
     profile.set_preference('general.useragent.override', header["User-Agent"])
@@ -159,9 +163,9 @@ def get_driver(headless: bool = True):
     if headless:
         firefox_options.add_argument("--headless")
     #firefox_options.proxy = proxy
-
+    firefox_options.profile = profile
     # Initialize the WebDriver with the options
-    driver: WebDriver = webdriver.Firefox(options=firefox_options, firefox_profile=profile)
+    driver: WebDriver = webdriver.Firefox(options=firefox_options)
     driver.set_window_size(header["screen-width"], header["screen-height"])
     driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
     return driver
@@ -201,7 +205,9 @@ def parse_salaries(html) -> Tuple[List[Dict], int]:
     return salaries
 async def scrape_cache(url: str, session: WebDriver):
     """Scrape job listings"""
+    t = time.time()
     session.get(url)
+    print(f"Requesting page from glassdoor took {time.time() - t} seconds")
     first_page_response = session.page_source  # Await here to fetch the first page asynchronously
     cache = extract_apollo_state(first_page_response)
     xhr_cache = cache["ROOT_QUERY"]
@@ -210,13 +216,22 @@ async def scrape_cache(url: str, session: WebDriver):
     return company_data
 async def get_company_data(company: str) -> Dict:
     with get_driver() as client:
-        #block execution until we find the companies
-        companies : list[FoundCompany] = await find_companies(company, client)
-        #Grab the url to the company
-        company_data_url : str = companies[0]["url_reviews"]
-        print("Company Data Url: "+company_data_url)
-        #Await scraping the company data from json embeded in the html
-        company_data_full : Dict = await scrape_cache(company_data_url, client)
+        try:
+            t = time.time()
+            #block execution until we find the companies
+            companies : list[FoundCompany] = await find_companies(company, client)
+            print(f"Getting companies took {time.time() - t} seconds")
+            t = time.time()
+            #Grab the url to the company
+            company_data_url : str = companies[0]["url_reviews"]
+            print("Company Data Url: "+company_data_url)
+            #Await scraping the company data from json embeded in the html
+            company_data_full : Dict = await scrape_cache(company_data_url, client)
+            print(f"Scraping cache took {time.time() - t} seconds")
+        except Exception as e:
+            raise e
+        finally:
+            client.quit()
     print(json.dumps(company_data_full, indent=2))
     return {
         "overallRating": company_data_full["ratings"]["overallRating"],
@@ -275,7 +290,6 @@ async def find_companies(query: str, session: WebDriver) -> List[FoundCompany]:
     result: str = session.find_element(By.XPATH, "/html/body").text
     try:
         data = json.loads(result)
-        print(json.dumps(data, indent=2))
     except Exception as e:
         print("DATA CONVERSION FAILED FOR: " + result)
         while(1):
@@ -356,4 +370,3 @@ class Url:
         assert new != url
         return new
 
-    

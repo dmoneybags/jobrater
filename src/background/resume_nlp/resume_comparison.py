@@ -6,7 +6,7 @@ from nltk.tokenize import sent_tokenize
 from sentence_transformers import SentenceTransformer, util
 
 # Download NLTK stop words list if not already downloaded
-class Resume_comparison:
+class ResumeComparison:
     model = SentenceTransformer('all-MiniLM-L6-v2')
     stop_words = set(stopwords.words('english'))
 
@@ -16,7 +16,7 @@ class Resume_comparison:
         
         # Remove special characters except for sentence boundary punctuation
         #text = re.sub(r'[^a-zA-Z0-9\s\.\!\?]', '', text)
-        text = ' '.join([word for word in text.split() if word not in Resume_comparison.stop_words])
+        text = ' '.join([word for word in text.split() if word not in ResumeComparison.stop_words])
         # Remove extra whitespace
         text = re.sub(r'\s+', ' ', text).strip()
         
@@ -42,12 +42,12 @@ class Resume_comparison:
         return sentences
 
     def get_embeddings(text):
-        preprocessed_text = Resume_comparison.preprocess(text)
-        sentences = Resume_comparison.split_into_sentences(preprocessed_text)
-        return Resume_comparison.model.encode(sentences)
+        preprocessed_text = ResumeComparison.preprocess(text)
+        sentences = ResumeComparison.split_into_sentences(preprocessed_text)
+        return ResumeComparison.model.encode(sentences)
     def get_similarity_matrix(job_description_text, resume_text):
-        job_embeddings = Resume_comparison.get_embeddings(job_description_text)
-        resume_embeddings = Resume_comparison.get_embeddings(resume_text)
+        job_embeddings = ResumeComparison.get_embeddings(job_description_text)
+        resume_embeddings = ResumeComparison.get_embeddings(resume_text)
         return util.pytorch_cos_sim(job_embeddings, resume_embeddings).cpu().numpy()
     def compare_embeddings(similarity_matrix):
         # Flatten the matrix and get indices sorted by values
@@ -60,11 +60,19 @@ class Resume_comparison:
         sorted_index_list = list(zip(sorted_indices_2d[0], sorted_indices_2d[1]))
 
         return sorted_index_list
+    def serialize_similarity_matrix(similarity_matrix):
+        simalarity_matrix_numpy = similarity_matrix.numpy()
+        similarity_matrix_str = np.array2string(simalarity_matrix_numpy)
+        return similarity_matrix_str
+    def serialize_sorted_index_list(sorted_index_list):
+        sorted_index_list = [list(a) for a in sorted_index_list]
+        sorted_index_numpy = np.array(sorted_index_numpy)
+        return np.array2string(sorted_index_numpy)
     def print_comparisons(job_description, resume):
-        job_sentences = Resume_comparison.split_into_sentences(job_description)
-        resume_sentences = Resume_comparison.split_into_sentences(resume)
-        similarity_matrix = Resume_comparison.get_similarity_matrix(job_description, resume)
-        sorted_index_list = Resume_comparison.compare_embeddings(similarity_matrix)
+        job_sentences = ResumeComparison.split_into_sentences(job_description)
+        resume_sentences = ResumeComparison.split_into_sentences(resume)
+        similarity_matrix = ResumeComparison.get_similarity_matrix(job_description, resume)
+        sorted_index_list = ResumeComparison.compare_embeddings(similarity_matrix)
         i=0
         for (job_description_sentence_index, resume_sentence_index) in sorted_index_list:
             print(f"================= NUMBER {i} ================")
@@ -185,4 +193,4 @@ Apple Certified iOS Developer
 Scrum Master Certified (SMC)
 '''
 if __name__ == "__main__":
-    Resume_comparison.print_comparisons(job_description, resume)
+    ResumeComparison.print_comparisons(job_description, resume)

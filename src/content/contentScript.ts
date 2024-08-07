@@ -40,6 +40,8 @@ import { LocalStorageHelper } from "./localStorageHelper";
             .then((responseJson: Record<string, any>) => {
                 const completeJob: Job = JobFactory.generateFromJson(responseJson);
                 LocalStorageHelper.addJob(completeJob);
+                let message : Record<string, any> = {type: 'NEW_JOB', payload: completeJob };
+                window.postMessage(message, '*');
             })
         })
     }

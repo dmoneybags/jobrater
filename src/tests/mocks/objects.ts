@@ -1,5 +1,6 @@
 import { User } from "../../content/user";
 import { Company, CompanyFactory } from "../../content/company";
+import { LocationObject } from "../../content/location"
 import { PaymentFrequency, Mode, Job } from "../../content/job";
 
 //Mock file for objects used in our tests
@@ -35,6 +36,7 @@ export class MockObjects {
         "Director", 
         "Software Engineer", 
         MockObjects.initech_with_data_company, 
+        "BLORG NINEEEE",
         123000, 
         new PaymentFrequency("yr"),
         141000, 
@@ -50,6 +52,7 @@ export class MockObjects {
         null, 
         "Software Engineer", 
         MockObjects.apple_with_data_company, 
+        "blorg nine 90",
         null, 
         null,
         null, 
@@ -77,6 +80,7 @@ export class MockObjects {
         "Associate", 
         "Big Hoss", 
         MockObjects.apple_with_null_values_company, 
+        "blorg nine 5",
         121000, 
         new PaymentFrequency("yr"),
         140000, 
@@ -85,5 +89,8 @@ export class MockObjects {
         10000, 
         null, 
         null
+    )
+    static apple_location: LocationObject = new LocationObject(
+        "One Apple Park Way", "Cupertino", "95014", "CA", 37.334606, -122.009102
     )
 }

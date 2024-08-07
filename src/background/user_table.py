@@ -83,6 +83,7 @@ class UserTable:
         result: (Dict[str, RowItemType]) = cursor.fetchone()
         cursor.close()
         if not result:
+            print("COULD NOT FIND USER IN DB WITH EMAIL " + email)
             return None
         print("READ USER WITH EMAIL " + email + " GOT "+ str(result))
         return User.create_with_sql_row(result)

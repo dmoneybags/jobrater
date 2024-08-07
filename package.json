@@ -14,14 +14,18 @@
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "bcryptjs-react": "^2.4.6",
+    "docxtemplater": "^3.49.1",
     "express": "^4.19.2",
     "jest": "^29.7.0",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.10.1",
+    "node-fetch": "^3.3.2",
     "pako": "^2.1.0",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-local": "^1.0.0",
+    "pdf-lib": "^1.17.1",
+    "pizzip": "^3.1.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

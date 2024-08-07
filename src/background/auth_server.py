@@ -30,11 +30,7 @@ import daemon
 from flask_cors import CORS
 import logging
 from logging.handlers import RotatingFileHandler
-import signal
 from functools import partial
-
-signal.signal(signal.SIGTERM, partial(HelperFunctions.handle_sigterm, caller_name="auth_server"))
-
 
 app : Flask = Flask(__name__)
 CORS(app)
@@ -195,11 +191,18 @@ class AuthServer:
                     app.run(debug=False, port=PORT)
             except Exception as e:
                 print(e)
+    def shutdown():
+        HelperFunctions.handle_sigterm("auth_server")
 if __name__ == '__main__':
-    # Check for the -I argument
-    if '-i' in sys.argv:
-        # Run the script normally without daemonizing
-        print("Running in non-daemon mode")
-        app.run(debug=False, port=PORT)
-    else:
-        AuthServer.run_as_daemon()
+    try:
+        # Check for the -I argument
+        if '-i' in sys.argv:
+            # Run the script normally without daemonizing
+            print("Running in non-daemon mode")
+            app.run(debug=False, port=PORT)
+        else:
+            AuthServer.run_as_daemon()
+    except Exception as e:
+        raise e
+    finally:
+        AuthServer.shutdown()

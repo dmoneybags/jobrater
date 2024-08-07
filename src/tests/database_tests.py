@@ -1,7 +1,8 @@
 import sys
 import os
+import re
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'background')))
-
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'mocks')))
 import json
 from auth_logic import decode_user_from_token, get_token
 from uuid import uuid1
@@ -12,11 +13,13 @@ from company_table import CompanyTable
 from job import Job
 from job_table import JobTable
 from user_job_table import UserJobTable
+from resume_table import Resume, ResumeTable
+from objects import MockObjects
 
 
 #TESTS JUST DB CODE, NO SERVERS
 job_data = {
-    "job": "Specification Sales",
+    "jobName": "Specification Sales",
     "locationStr": "Cupertino, CA",
     "secondsPostedAgo": 1814400,
     "applicants": "100",
@@ -26,6 +29,7 @@ job_data = {
     "mode": "Hybrid",
     "careerStage": "Mid-Senior level",
     "jobId": "3936196442",
+    "description": "beep boop",
     "company": {
         "companyName": "Apple",
         "businessOutlookRating": 1,
@@ -146,7 +150,7 @@ def user_job_tests(user_id):
     job_id = ["1835781350", "3252359832", "2335285392", "3295295725"]
     for i in range(len(job_strs)):
         job_data_copy = job_data
-        job_data_copy["job"] = job_strs[i]
+        job_data_copy["jobName"] = job_strs[i]
         job_data_copy["jobId"] = job_id[i]
         print("TEST JOB BEING ADDED WITH NAME " + job_strs[i])
         job = Job.create_with_json(job_data_copy)
@@ -155,8 +159,12 @@ def user_job_tests(user_id):
     print(results)
     assert(len(results) == len(job_strs))
     for result in results:
+        print(result.job_name)
+    for result in results:
         #make sure the title is in our list
-        assert(job_strs.count(result.job_name) == 1)
+        if not job_strs.count(result.job_name) == 1:
+            print(f"{result.job_name} not found in job_strs")
+            assert(False)
     print("USER JOBS SUCCESSFULLY READ")
     #test that deleting the job deletes the user job
     print("TESTING DELETING JOB AND READING USER JOB")
@@ -177,11 +185,49 @@ def user_job_tests(user_id):
     assert(job.company.company_name == "Apple")
     print("JOB PERSISTS TEST PASSED \n\n")
 
+def resume_tests(user_id):
+    def normalize_string(s):
+        # Convert to lowercase
+        s = s.lower()
+        # Remove special characters
+        s = re.sub(r'[^a-z0-9]', '', s)
+        return s
+    print("RUNNING RESUME TESTS")
+    print("TESTING THAT WE CAN PROPERLY READ DOCX TEST")
+    with open(os.getcwd() + "/src/tests/mocks/resume.docx", "rb") as doc:
+        resume = Resume(None, None, "resume.docx", "docx", doc, None)
+        if normalize_string(resume.file_text) != normalize_string(MockObjects.docx_resume_text):
+            print("DOCX TEXT OF " + MockObjects.docx_resume_text)
+            print("IS NOT EQUAL TO " + resume.file_text)
+            assert(False)
+        print("TEXT MATCHED!")
+    print("TESTING THAT WE CAN PROPERLY READ PDF TEST")
+    with open(os.getcwd() + "/src/tests/mocks/resume.pdf", "rb") as doc:
+        pdf_bytes = doc.read()
+        resume = Resume(None, None, "resume.pdf", "pdf", pdf_bytes, None)
+        print("PDF TEXT: " + MockObjects.pdf_resume_text)
+        print("REREAD TEXT: " + resume.file_text)
+        print("TEXT MATCHED!")
+    print("TESTING ADDING A RESUME TO THE DB")
+    dummy_user_id = user_id
+    resume.user_id = dummy_user_id
+    ResumeTable.add_resume(user_id, resume)
+    reread_resume = ResumeTable.read_user_resumes(dummy_user_id)[0]
+    assert(str(user_id) == str(reread_resume.user_id))
+    assert(resume.file_content == reread_resume.file_content)
+    assert(resume.file_text == reread_resume.file_text)
+    assert(resume.file_name == reread_resume.file_name)
+    print("TEST PASSED")
+    print("TESTING DELETING A RESUME")
+    ResumeTable.delete_resume(reread_resume.id)
+    assert(len(ResumeTable.read_user_resumes(dummy_user_id)) == 0)
+    print("TEST PASSED")
 if __name__ == "__main__":
     user_id = user_tests()
     company_tests()
     job_tests(user_id)
     user_job_tests(user_id)
+    resume_tests(user_id)
 
 
     

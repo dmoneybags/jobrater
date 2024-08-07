@@ -1,8 +1,5 @@
-import { LargeNumberLike } from "crypto";
 import { LocationObject, LocationObjectFactory } from "./location";
 import { Company, CompanyFactory } from "./company";
-import { json } from "stream/consumers";
-
 /**
  * PaymentFrequency
  * 
@@ -63,6 +60,7 @@ export class Job {
     careerStage: string | null;
     jobName: string;
     company: Company;
+    description: string;
     paymentBase: number | null;
     paymentFreq: PaymentFrequency | null;
     paymentHigh: number | null;
@@ -71,11 +69,12 @@ export class Job {
     secondsPostedAgo: number;
     timeAdded: Date | null;
     location: LocationObject | null;
-    constructor(jobId : string, applicants: number, careerStage: string | null, jobName: string, company: Company, paymentBase: number | null,
+    constructor(jobId : string, applicants: number, careerStage: string | null, jobName: string, company: Company, description: string, paymentBase: number | null,
         paymentFreq: PaymentFrequency | null, paymentHigh: number | null, locationStr: string | null, mode: Mode, secondsPostedAgo: number, timeAdded: Date | null, location: LocationObject | null){
         this.jobId = jobId;
         this.applicants = applicants;
         this.careerStage = careerStage;
+        this.description = description;
         this.jobName = jobName;
         this.company = company;
         this.paymentFreq = paymentFreq;
@@ -94,6 +93,7 @@ export class Job {
             careerStage: this.careerStage,
             jobName: this.jobName,
             company: this.company,
+            description: this.description,
             //paymentFreq is passed below
             paymentBase: this.paymentBase,
             paymentHigh: this.paymentHigh,
@@ -123,6 +123,7 @@ export class JobFactory {
         const jobId: string = jsonObject["jobId"];
         const applicants: number = jsonObject["applicants"];
         const careerStage: string = jsonObject["careerStage"];
+        const description: string = jsonObject["description"];
         const jobName: string = jsonObject["jobName"];
         var company: Company
         try {
@@ -148,7 +149,7 @@ export class JobFactory {
             console.log(error);
             location = null;
         }
-        return new Job(jobId, applicants, careerStage, jobName, company, paymentBase, paymentFreq, paymentHigh, 
+        return new Job(jobId, applicants, careerStage, jobName, company, description, paymentBase, paymentFreq, paymentHigh, 
             locationStr, mode, secondsPostedAgo, timeAdded, location
         )
     }

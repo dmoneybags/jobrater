@@ -33,9 +33,12 @@ from user_job_table import UserJobTable
 from user_table import UserTable
 from job_table import JobTable
 from company_table import CompanyTable
+from resume_table import ResumeTable
+from resume_nlp.resume_comparison import ResumeComparison
 from company import Company
 from job import Job
 from user import User
+from resume import Resume
 from typing import Dict
 import glassdoor_scraper
 from helper_functions import HelperFunctions
@@ -44,10 +47,8 @@ import sys
 import os
 import traceback
 import asyncio
-import signal
+import time
 from functools import partial
-
-signal.signal(signal.SIGTERM, partial(HelperFunctions.handle_sigterm, caller_name="database_server"))
 
 #Set up our server using flask
 app = Flask(__name__)
@@ -55,7 +56,7 @@ app = Flask(__name__)
 CORS(app)
 PORT=5001
 
-CANSCRAPEGLASSDOOR: bool = False
+CANSCRAPEGLASSDOOR: bool = True
 
 class DatabaseServer:
     #
@@ -89,12 +90,24 @@ class DatabaseServer:
             job_json : Dict = json.loads(message)
             print("=============== RECIEVED JOB JSON OF =========== \n\n")
             print(json.dumps(job_json, indent=4))
-            companyName: str = job_json["company"]["companyName"]
-            if (not CompanyTable.read_company_by_id("company") and CANSCRAPEGLASSDOOR):
+            company_name: str = job_json["company"]["companyName"]
+            if (not CompanyTable.read_company_by_id(company_name) and CANSCRAPEGLASSDOOR):
+                t1 = time.time()
                 print("RETRIEVING COMPANY FROM GLASSDOOR")
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                job_json["company"] = loop.run_until_complete(get_company_data_async(companyName))
+                company_data: Dict = loop.run_until_complete(get_company_data_async(company_name))
+                company : Company = Company(company_name, company_data["businessOutlookRating"], 
+                                            company_data["careerOpportunitiesRating"], company_data["ceoRating"],
+                                            company_data["compensationAndBenefitsRating"],
+                                            company_data["cultureAndValuesRating"],
+                                            company_data["diversityAndInclusionRating"],
+                                            company_data["seniorManagementRating"],
+                                            company_data["workLifeBalanceRating"],
+                                            company_data["overallRating"])
+                job_json["company"] = company.to_json()
+                t2 = time.time()
+                print("Scraping glassdoor took: " + str(t2 - t1) + " seconds")
             print("\n\n")
         except json.JSONDecodeError:
             print("YOUR JOB JSON OF " + message + "IS INVALID")
@@ -268,8 +281,10 @@ class DatabaseServer:
         if not user:
             abort(404)
         jobs : list[Job] = UserJobTable.get_user_jobs(user.user_id)
+        resumes: list[Resume] = ResumeTable.read_user_resumes(user.user_id)
         json_jobs : list[Dict] = [job.to_json() for job in jobs]
-        return json.dumps({"user": user.to_json(), "jobs": json_jobs})
+        json_resumes : list[Dict] = [resume.to_json() for resume in resumes]
+        return json.dumps({"user": user.to_json(), "jobs": json_jobs, "resumes": json_resumes})
     '''
     get_user_data_by_googleId
 
@@ -324,6 +339,43 @@ class DatabaseServer:
             return json.dumps({'message': 'User not in db'}), 401
         UserTable.delete_user_by_email(user_email)
         return 'success', 200
+    #
+    #
+    # RESUME METHODS
+    #
+    #
+    @app.route('/databases/add_resume', methods=['POST'])
+    @token_required
+    def add_resume():
+        token : str = request.headers.get('Authorization')
+        user : User | None = decode_user_from_token(token)
+        resume_json: Dict = request.get_json()["resume"]
+        resume: Resume = Resume.create_with_json(resume_json)
+        resume_json: Dict = ResumeTable.add_resume(user.user_id, resume)
+        return json.dumps(resume_json)
+    @app.route('/databases/delete_resume', methods=['POST'])
+    @token_required
+    def delete_resume():
+        resume_id: str = request.args.get('resumeId', default="NO RESUME LOADED", type=str)
+        ResumeTable.delete_resume(resume_id)
+        return 'success', 200
+    @app.route('/databases/compare_resumes', methods=['GET'])
+    @token_required
+    def compare_resumes():
+        token : str = request.headers.get('Authorization')
+        user : User | None = decode_user_from_token(token)
+        job_id: str = request.args.get('jobId', default="NO JOB DESCRIPTION LOADED", type=str)
+        job = JobTable.read_job_by_id(job_id)
+        resumes: list[Resume] = ResumeTable.read_user_resumes(user.user_id)
+        resume_comparison_data: Dict = {}
+        for resume in resumes:
+            similarity_matrix = ResumeComparison.get_similarity_matrix(job.description, resume)
+            sorted_index_list = ResumeComparison.compare_embeddings(similarity_matrix)
+            resume_comparison_data[resume.id] = {
+                "similarityMatrix": ResumeComparison.serialize_similarity_matrix(similarity_matrix),
+                "sortedIndexList": ResumeComparison.serialize_similarity_matrix(sorted_index_list)
+            }
+        return json.dumps(resume_comparison_data) 
     '''
     run_as_daemon
 
@@ -349,11 +401,21 @@ class DatabaseServer:
         except Exception as e:
             print(e)
             traceback.print_exc()
+    def shutdown():
+        print("Handling database server shutdown")
+        HelperFunctions.handle_sigterm("database_server")
+        print("Shutdown successful")
+
 if __name__ == '__main__':
-    # Check for the -I argument
-    if '-i' in sys.argv:
-        # Run the script normally without daemonizing
-        print("Running in non-daemon mode")
-        app.run(debug=False, port=PORT)
-    else:
-        DatabaseServer.run_as_daemon()
+    try:
+        # Check for the -I argument
+        if '-i' in sys.argv:
+            # Run the script normally without daemonizing
+            print("Running in non-daemon mode")
+            app.run(debug=False, port=PORT)
+        else:
+            DatabaseServer.run_as_daemon()
+    except Exception as e: 
+        raise e
+    finally:
+        DatabaseServer.shutdown()
